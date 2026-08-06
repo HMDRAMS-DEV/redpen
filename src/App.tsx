@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
 import type { Point, Shot, Stroke } from './types'
 import { dictationSupported, useDictation } from './useDictation'
 import { download, drawStrokes, exportName, renderShot } from './render'
+import { makeZip } from './zip'
+
+const isMac = /Mac|iP(hone|ad)/.test(navigator.platform || navigator.userAgent)
+const MOD = isMac ? '⌘' : 'Ctrl'
 
 function readFile(file: File): Promise<Shot> {
   return new Promise((res, rej) => {
@@ -33,6 +36,8 @@ export default function App() {
   const [index, setIndex] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [zoom, setZoom] = useState(false)
+  const [entering, setEntering] = useState(false)
 
   const shot = shots[index]
 
@@ -63,7 +68,7 @@ export default function App() {
     [shot, patch],
   )
 
-  const { recording, interim, toggle, stop } = useDictation(appendNote)
+  const { recording, interim, error, toggle, stop } = useDictation(appendNote)
 
   const undo = useCallback(() => {
     if (!shot) return
@@ -73,32 +78,81 @@ export default function App() {
   const go = useCallback(
     (delta: number) => {
       stop()
+      setZoom(false)
       setIndex((i) => Math.min(shots.length - 1, Math.max(0, i + delta)))
     },
     [shots.length, stop],
   )
 
+  const jump = useCallback(
+    (i: number) => {
+      stop()
+      setZoom(true)
+      setIndex(i)
+    },
+    [stop],
+  )
+
+  // Stepping with arrows is a high-frequency action, so it only crossfades.
+  // Tapping a thumbnail is deliberate and rare, so that one zooms.
+  useEffect(() => {
+    setEntering(true)
+    let inner = 0
+    // Two frames: one to paint the "before" state, one to transition out of it.
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setEntering(false))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
+  }, [index])
+
   const exportOne = useCallback(async (s: Shot, i: number) => {
     download(await renderShot(s), exportName(s, i))
   }, [])
 
+  // One archive rather than N downloads — Chrome gates multi-file downloads
+  // behind a permission prompt that is easy to miss and easy to deny.
   const exportAll = useCallback(async () => {
+    if (busy) return
     setBusy(true)
-    for (let i = 0; i < shots.length; i++) {
-      await exportOne(shots[i], i)
-      // Chrome throttles rapid programmatic downloads.
-      await new Promise((r) => setTimeout(r, 350))
+    try {
+      const entries = []
+      for (let i = 0; i < shots.length; i++) {
+        const blob = await renderShot(shots[i])
+        entries.push({
+          name: exportName(shots[i], i),
+          data: new Uint8Array(await blob.arrayBuffer()),
+        })
+      }
+      download(makeZip(entries), 'redpen.zip')
+    } finally {
+      setBusy(false)
     }
-    setBusy(false)
-  }, [shots, exportOne])
+  }, [shots, busy])
 
   // --- keyboard ---------------------------------------------------------
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const mod = isMac ? e.metaKey : e.ctrlKey
       const typing =
         e.target instanceof HTMLElement &&
         (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+
+      // Mic is modifier-based so it still works while typing the note.
+      if (mod && e.key === 'Enter') {
+        e.preventDefault()
+        toggle()
+        return
+      }
+      if (mod && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        if (e.shiftKey) exportAll()
+        else if (shot) exportOne(shot, index)
+        return
+      }
+      if (mod && e.key.toLowerCase() === 'z') {
         e.preventDefault()
         undo()
         return
@@ -106,14 +160,10 @@ export default function App() {
       if (typing) return
       if (e.key === 'ArrowRight') go(1)
       else if (e.key === 'ArrowLeft') go(-1)
-      else if (e.key === ' ') {
-        e.preventDefault()
-        toggle()
-      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [go, toggle, undo])
+  }, [go, toggle, undo, exportAll, exportOne, shot, index])
 
   // --- window-level drop ------------------------------------------------
   useEffect(() => {
@@ -162,33 +212,29 @@ export default function App() {
             />
           </label>
           <button className="ghost" onClick={() => exportOne(shot, index)}>
-            Export
+            Download <kbd>{MOD}D</kbd>
           </button>
           <button className="primary" onClick={exportAll} disabled={busy}>
-            {busy ? 'Exporting…' : `Download all (${shots.length})`}
+            {busy ? 'Zipping…' : `Download all · ${shots.length}`}
+            <kbd>{MOD}⇧D</kbd>
           </button>
         </div>
       </header>
 
       <main className="stage">
         <NavButton dir={-1} disabled={index === 0} onClick={() => go(-1)} />
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={shot.id}
-            className="canvasWrap"
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.04 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 34, mass: 0.7 }}
-          >
-            <Sketchpad
-              shot={shot}
-              onStroke={(stroke) =>
-                patch(shot.id, (s) => ({ ...s, strokes: [...s.strokes, stroke] }))
-              }
-            />
-          </motion.div>
-        </AnimatePresence>
+        <div
+          className="canvasWrap"
+          data-entering={entering || undefined}
+          data-zoom={zoom || undefined}
+        >
+          <Sketchpad
+            shot={shot}
+            onStroke={(stroke) =>
+              patch(shot.id, (s) => ({ ...s, strokes: [...s.strokes, stroke] }))
+            }
+          />
+        </div>
         <NavButton
           dir={1}
           disabled={index === shots.length - 1}
@@ -200,25 +246,31 @@ export default function App() {
         <button
           className={`mic ${recording ? 'on' : ''}`}
           onClick={toggle}
-          title={dictationSupported() ? 'Dictate (Space)' : 'Not supported in this browser'}
+          // Never take focus, so the button can't swallow keys meant for the page.
+          onMouseDown={(e) => e.preventDefault()}
           disabled={!dictationSupported()}
         >
           <MicIcon />
           {recording && <span className="pulse" />}
         </button>
+        <div className="micLabel">
+          <strong>{recording ? 'Listening…' : 'Talk'}</strong>
+          <kbd>{MOD}⏎</kbd>
+        </div>
         <div className="noteBody">
           <textarea
             value={shot.note}
             placeholder={
               dictationSupported()
-                ? 'Hit the mic and talk. Or type here.'
-                : 'Dictation needs Chrome or Safari. Type your note here.'
+                ? `Press ${MOD}⏎ and talk. Or type here.`
+                : 'Dictation needs Chrome, Edge, or Safari. Type your note here.'
             }
             onChange={(e) =>
               patch(shot.id, (s) => ({ ...s, note: e.target.value }))
             }
           />
           {interim && <div className="interim">{interim}</div>}
+          {error && <div className="micError">{error}</div>}
         </div>
         <div className="hints">
           <span>
@@ -226,10 +278,7 @@ export default function App() {
             <kbd>→</kbd> move
           </span>
           <span>
-            <kbd>Space</kbd> mic
-          </span>
-          <span>
-            <kbd>⌘Z</kbd> undo
+            <kbd>{MOD}Z</kbd> undo
           </span>
         </div>
       </footer>
@@ -239,10 +288,7 @@ export default function App() {
           <button
             key={s.id}
             className={`thumb ${i === index ? 'active' : ''}`}
-            onClick={() => {
-              stop()
-              setIndex(i)
-            }}
+            onClick={() => jump(i)}
           >
             <img src={s.src} alt="" />
             {s.note.trim() && <span className="badge" />}
@@ -266,7 +312,8 @@ function NavButton({
 }) {
   return (
     <button className="nav" onClick={onClick} disabled={disabled}>
-      {dir === -1 ? '‹' : '›'}
+      <span className="chev">{dir === -1 ? '‹' : '›'}</span>
+      <kbd>{dir === -1 ? '←' : '→'}</kbd>
     </button>
   )
 }
@@ -294,6 +341,11 @@ function Sketchpad({
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+
+  // Abandon an in-flight stroke if the shot changes mid-drag.
+  useEffect(() => {
+    drawing.current = null
+  }, [shot.id])
 
   const paint = useCallback(
     (live?: Point[]) => {
@@ -352,26 +404,51 @@ function Dropzone({
   onFiles: (f: FileList) => void
 }) {
   return (
-    <label className={`zone ${dragging ? 'hot' : ''}`}>
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => e.target.files && onFiles(e.target.files)}
-      />
+    <div className="zoneWrap">
       <div className="zoneMark">
         Redpen<span className="dot" />
       </div>
-      <p>Drop your app screenshots here</p>
-      <small>Circle what's broken. Say why. Export the whole set.</small>
-    </label>
+      <label className={`zone ${dragging ? 'hot' : ''}`}>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          hidden
+          onChange={(e) => e.target.files && onFiles(e.target.files)}
+        />
+        <DropIcon />
+        <p>Drag your screenshots here</p>
+        <span className="or">
+          or <u>click to choose files</u>
+        </span>
+        <small>PNG or JPG · drop as many as you want</small>
+      </label>
+      <p className="zoneTag">Circle what's broken. Say why. Download the whole set.</p>
+    </div>
+  )
+}
+
+function DropIcon() {
+  return (
+    <svg
+      className="dropIcon"
+      width="56"
+      height="56"
+      viewBox="0 0 48 48"
+      fill="none"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 29v6a6 6 0 0 0 6 6h18a6 6 0 0 0 6-6v-6" stroke="currentColor" />
+      <path d="M24 6v21M15 19l9 9 9-9" stroke="var(--pen)" />
+    </svg>
   )
 }
 
 function MicIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <rect x="9" y="2" width="6" height="11" rx="3" />
       <path d="M5 11a7 7 0 0 0 14 0M12 18v4" />
     </svg>

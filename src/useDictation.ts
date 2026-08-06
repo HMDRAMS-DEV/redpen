@@ -2,6 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 type SpeechRecognition = any
 
+const ERRORS: Record<string, string> = {
+  'not-allowed': 'Microphone blocked. Allow it in the address bar, then try again.',
+  'service-not-allowed': 'Microphone blocked by the browser or OS.',
+  'audio-capture': 'No microphone found.',
+  network: 'Speech service unreachable. Check your connection.',
+}
+
 function getRecognition(): SpeechRecognition | null {
   const Ctor =
     (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -18,6 +25,7 @@ export const dictationSupported = () =>
 export function useDictation(onFinal: (text: string) => void) {
   const [recording, setRecording] = useState(false)
   const [interim, setInterim] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const recRef = useRef<SpeechRecognition | null>(null)
   const wantOnRef = useRef(false)
   const onFinalRef = useRef(onFinal)
@@ -32,7 +40,11 @@ export function useDictation(onFinal: (text: string) => void) {
 
   const start = useCallback(() => {
     const rec = getRecognition()
-    if (!rec) return
+    if (!rec) {
+      setError('This browser has no speech recognition. Use Chrome, Edge, or Safari.')
+      return
+    }
+    setError(null)
     rec.continuous = true
     rec.interimResults = true
     rec.lang = 'en-US'
@@ -48,20 +60,36 @@ export function useDictation(onFinal: (text: string) => void) {
     }
     // Chrome ends the session on silence — restart while the user still wants it on.
     rec.onend = () => {
-      if (wantOnRef.current) rec.start()
-      else setRecording(false)
-    }
-    rec.onerror = (e: any) => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-        wantOnRef.current = false
+      if (wantOnRef.current) {
+        try {
+          rec.start()
+        } catch {
+          // Safari refuses to restart outside a user gesture; drop back to idle.
+          wantOnRef.current = false
+          setRecording(false)
+        }
+      } else {
         setRecording(false)
       }
+    }
+    rec.onerror = (e: any) => {
+      // 'no-speech' and 'aborted' are routine; onend handles the restart.
+      if (e.error === 'no-speech' || e.error === 'aborted') return
+      setError(ERRORS[e.error] ?? `Dictation error: ${e.error}`)
+      wantOnRef.current = false
+      setRecording(false)
+      setInterim('')
     }
 
     recRef.current = rec
     wantOnRef.current = true
-    rec.start()
-    setRecording(true)
+    try {
+      rec.start()
+      setRecording(true)
+    } catch {
+      setError('Could not start the microphone. Reload and try again.')
+      wantOnRef.current = false
+    }
   }, [])
 
   const toggle = useCallback(() => {
@@ -74,5 +102,5 @@ export function useDictation(onFinal: (text: string) => void) {
     recRef.current?.abort()
   }, [])
 
-  return { recording, interim, toggle, stop }
+  return { recording, interim, error, toggle, stop }
 }
