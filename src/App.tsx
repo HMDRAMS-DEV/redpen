@@ -419,45 +419,52 @@ function Dropzone({
   onFiles: (f: FileList) => void
 }) {
   return (
-    <div className="zoneWrap">
+    <label className={`zone ${dragging ? 'hot' : ''}`}>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => e.target.files && onFiles(e.target.files)}
+      />
       <div className="zoneMark">
         Redpen<span className="dot" />
       </div>
-      <label className={`zone ${dragging ? 'hot' : ''}`}>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          hidden
-          onChange={(e) => e.target.files && onFiles(e.target.files)}
-        />
-        <DropIcon />
-        <p>Drag your screenshots here</p>
-        <span className="or">
-          or <u>click to choose files</u>
-        </span>
-        <small>PNG or JPG · drop as many as you want</small>
-      </label>
       <p className="zoneTag">Circle what's broken. Say why. Download the whole set.</p>
-    </div>
+      <ShotStack />
+      <div className="zoneCta">
+        <strong>Drop your screenshots anywhere</strong>
+        <span>
+          or <u>click to choose</u> · PNG or JPG · as many as you like
+        </span>
+      </div>
+    </label>
   )
 }
 
-function DropIcon() {
+/** The product's own metaphor as the illustration: marked-up screenshots. */
+function ShotStack() {
   return (
-    <svg
-      className="dropIcon"
-      width="56"
-      height="56"
-      viewBox="0 0 48 48"
-      fill="none"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 29v6a6 6 0 0 0 6 6h18a6 6 0 0 0 6-6v-6" stroke="currentColor" />
-      <path d="M24 6v21M15 19l9 9 9-9" stroke="var(--pen)" />
-    </svg>
+    <div className="stack" aria-hidden="true">
+      <span className="card c1" />
+      <span className="card c2" />
+      <span className="card c3">
+        <i style={{ width: '62%' }} />
+        <i style={{ width: '84%' }} />
+        <i style={{ width: '44%' }} />
+        <i style={{ width: '72%' }} />
+        {/* Deliberately imperfect: it overshoots and crosses itself, the way a
+            real pen does. A clean ellipse reads as a shape, not a mark. */}
+        <svg className="scribble" viewBox="0 0 116 88" fill="none">
+          <path
+            d="M94 40c-3-14-19-24-37-23S23 29 21 45c-2 16 14 28 32 29 18 1 35-8 38-24 3-15-11-28-29-31C44 16 29 24 25 39"
+            stroke="var(--pen)"
+            strokeWidth="3.2"
+            strokeLinecap="round"
+          />
+        </svg>
+      </span>
+    </div>
   )
 }
 

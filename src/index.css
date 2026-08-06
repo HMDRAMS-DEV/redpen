@@ -53,61 +53,139 @@ kbd {
 }
 
 /* ---------- dropzone ---------- */
-.zoneWrap {
+.zone {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 22px;
-  padding: 32px;
-}
-.zoneMark {
-  font-size: 40px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-}
-
-.zone {
-  width: min(560px, 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 52px 40px;
-  border: 2px dashed #33333a;
-  border-radius: 18px;
-  background: #101012;
+  padding: 40px;
   cursor: pointer;
   text-align: center;
+  overflow: hidden;
+}
+/* Soft pool of light rather than a boxed-in target — the whole page accepts a drop. */
+.zone::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 760px;
+  height: 620px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(50% 50% at 50% 50%, #1a1a20 0%, transparent 70%);
+  opacity: 0.9;
+  transition: opacity 300ms var(--ease-out), background 300ms var(--ease-out);
+  pointer-events: none;
+}
+.zone.hot::before {
+  background: radial-gradient(50% 50% at 50% 50%, #2a1418 0%, transparent 70%);
+  opacity: 1;
+}
+.zone > * { position: relative; }
+
+.zoneMark {
+  font-size: 46px;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+}
+.zoneMark .dot { width: 8px; height: 8px; margin-left: 5px; vertical-align: 5px; }
+
+.zoneTag {
+  margin: 10px 0 0;
+  font-size: 17px;
+  color: var(--dim);
+  letter-spacing: -0.01em;
+}
+
+/* --- screenshot stack --- */
+.stack {
+  position: relative;
+  width: 220px;
+  height: 210px;
+  margin: 30px 0 26px;
+}
+.card {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 96px;
+  height: 176px;
+  border: 1px solid #33333c;
+  border-radius: 12px;
+  background: #17171c;
   transition:
-    border-color 200ms var(--ease-out),
-    background 200ms var(--ease-out),
-    transform 200ms var(--ease-out);
+    transform 400ms var(--ease-out),
+    border-color 300ms var(--ease-out),
+    box-shadow 300ms var(--ease-out);
 }
-.zone:active { transform: scale(0.99); }
-.zone.hot {
-  border-color: var(--pen);
-  background: #171113;
-  transform: scale(1.02);
+.c1 { transform: translateX(-50%) translateX(-46px) rotate(-11deg); }
+.c2 { transform: translateX(-50%) translateX(46px) rotate(11deg); }
+.c3 {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 9px;
+  height: 190px;
+  padding: 20px 13px;
+  background: #1e1e25;
+  border-color: #43434e;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%);
+}
+.card i {
+  height: 7px;
+  border-radius: 4px;
+  background: #33333d;
+}
+.scribble {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 104px;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  overflow: visible;
+}
+.scribble path {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: draw 900ms var(--ease-out) 500ms forwards;
+}
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+/* Drag pulls the stack apart, like it's making room. */
+.zone.hot .c1 { transform: translateX(-50%) translateX(-62px) rotate(-17deg); }
+.zone.hot .c2 { transform: translateX(-50%) translateX(62px) rotate(17deg); }
+.zone.hot .c3 {
+  transform: translateX(-50%) translateY(-12px);
+  border-color: rgba(255, 45, 45, 0.5);
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.6), 0 0 0 6px rgba(255, 45, 45, 0.09);
 }
 
-.dropIcon {
-  color: #5c5c66;
-  margin-bottom: 6px;
-  transition: color 200ms var(--ease-out), transform 200ms var(--ease-out);
+.zoneCta strong {
+  display: block;
+  font-size: 23px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
-.zone.hot .dropIcon { color: var(--text); transform: translateY(-4px); }
-
-.zone p { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
-.zone .or { font-size: 17px; color: var(--dim); }
-.zone .or u { text-decoration-color: #55555e; text-underline-offset: 3px; }
-.zone small { font-size: 15px; color: #74747c; }
-.zoneTag { margin: 0; font-size: 16px; color: var(--dim); }
+.zoneCta span {
+  display: block;
+  margin-top: 7px;
+  font-size: 16px;
+  color: #7c7c86;
+}
+.zoneCta u {
+  color: var(--dim);
+  text-decoration-color: #4d4d57;
+  text-underline-offset: 3px;
+  transition: color 160ms var(--ease-out);
+}
 
 @media (hover: hover) and (pointer: fine) {
-  .zone:hover { border-color: #4a4a54; background: #131316; }
-  .zone:hover .dropIcon { color: #82828c; }
+  .zone:hover .c1 { transform: translateX(-50%) translateX(-54px) rotate(-14deg); }
+  .zone:hover .c2 { transform: translateX(-50%) translateX(54px) rotate(14deg); }
+  .zone:hover .zoneCta u { color: var(--text); }
 }
 
 /* ---------- shell ---------- */
@@ -367,8 +445,8 @@ kbd {
 /* Keep the meaning-carrying fades; drop the movement. */
 @media (prefers-reduced-motion: reduce) {
   .canvasWrap[data-zoom][data-entering] { transform: none; }
-  .zone.hot, .zone:active,
   .ghost:active, .primary:active, .nav:active, .mic:active, .thumb:active { transform: none; }
   .thumb:hover { transform: none; }
   .pulse { animation: none; opacity: 0.6; }
+  .scribble path { animation: none; stroke-dashoffset: 0; }
 }
