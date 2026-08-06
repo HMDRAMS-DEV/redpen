@@ -6,7 +6,10 @@ const ERRORS: Record<string, string> = {
   'not-allowed': 'Microphone blocked. Allow it in the address bar, then try again.',
   'service-not-allowed': 'Microphone blocked by the browser or OS.',
   'audio-capture': 'No microphone found.',
-  network: 'Speech service unreachable. Check your connection.',
+  network:
+    "Couldn't reach Google's speech servers, which this browser relies on. " +
+    'Chromium forks (Arc, Brave) usually fail here — try Chrome. A VPN, ' +
+    'firewall, or custom DNS will also block it.',
 }
 
 function getRecognition(): SpeechRecognition | null {
@@ -28,8 +31,33 @@ export function useDictation(onFinal: (text: string) => void) {
   const [error, setError] = useState<string | null>(null)
   const recRef = useRef<SpeechRecognition | null>(null)
   const wantOnRef = useRef(false)
+  const localRef = useRef(false)
+  const retriedRef = useRef(false)
   const onFinalRef = useRef(onFinal)
   onFinalRef.current = onFinal
+
+  // Chrome 138+ can run recognition on-device, which skips Google's servers
+  // entirely — the only real cure for a `network` error. Probe once at mount so
+  // start() stays synchronous inside the user gesture.
+  useEffect(() => {
+    const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!Ctor?.available) return
+    let cancelled = false
+    const opts = { langs: ['en-US'], processLocally: true }
+    Ctor.available(opts)
+      .then(async (status: string) => {
+        if (status === 'downloadable' || status === 'downloading') {
+          await Ctor.install(opts).catch(() => false)
+          if (!cancelled) localRef.current = (await Ctor.available(opts)) === 'available'
+        } else if (status === 'available' && !cancelled) {
+          localRef.current = true
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const stop = useCallback(() => {
     wantOnRef.current = false
@@ -48,6 +76,7 @@ export function useDictation(onFinal: (text: string) => void) {
     rec.continuous = true
     rec.interimResults = true
     rec.lang = 'en-US'
+    if (localRef.current) rec.processLocally = true
 
     rec.onresult = (e: any) => {
       let live = ''
@@ -75,6 +104,12 @@ export function useDictation(onFinal: (text: string) => void) {
     rec.onerror = (e: any) => {
       // 'no-speech' and 'aborted' are routine; onend handles the restart.
       if (e.error === 'no-speech' || e.error === 'aborted') return
+      // A single network blip is common on the first connection; retry once
+      // before giving up on the user.
+      if (e.error === 'network' && !retriedRef.current && wantOnRef.current) {
+        retriedRef.current = true
+        return
+      }
       setError(ERRORS[e.error] ?? `Dictation error: ${e.error}`)
       wantOnRef.current = false
       setRecording(false)
@@ -83,6 +118,7 @@ export function useDictation(onFinal: (text: string) => void) {
 
     recRef.current = rec
     wantOnRef.current = true
+    retriedRef.current = false
     try {
       rec.start()
       setRecording(true)
