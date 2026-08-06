@@ -289,6 +289,23 @@ kbd {
 .interim { font-size: 17px; color: var(--dim); font-style: italic; }
 .micError { font-size: 15px; color: var(--pen); }
 
+.modelLoad {
+  position: relative;
+  margin-top: 4px;
+  padding-left: 2px;
+  font-size: 14px;
+  color: var(--dim);
+}
+.modelLoad span {
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--pen);
+  transition: width 300ms var(--ease-out);
+}
+
 .hints {
   flex: none;
   display: flex;

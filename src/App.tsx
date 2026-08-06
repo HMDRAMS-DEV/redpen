@@ -68,7 +68,8 @@ export default function App() {
     [shot, patch],
   )
 
-  const { recording, interim, error, toggle, stop } = useDictation(appendNote)
+  const { recording, status, progress, interim, error, toggle, stop } =
+    useDictation(appendNote)
 
   const undo = useCallback(() => {
     if (!shot) return
@@ -254,7 +255,15 @@ export default function App() {
           {recording && <span className="pulse" />}
         </button>
         <div className="micLabel">
-          <strong>{recording ? 'Listening…' : 'Talk'}</strong>
+          <strong>
+            {status === 'listening'
+              ? 'Listening…'
+              : status === 'loading'
+                ? 'Starting…'
+                : status === 'finishing'
+                  ? 'Writing…'
+                  : 'Talk'}
+          </strong>
           <kbd>{MOD}⏎</kbd>
         </div>
         <div className="noteBody">
@@ -263,13 +272,19 @@ export default function App() {
             placeholder={
               dictationSupported()
                 ? `Press ${MOD}⏎ and talk. Or type here.`
-                : 'Dictation needs Chrome, Edge, or Safari. Type your note here.'
+                : 'This browser has no microphone access. Type your note here.'
             }
             onChange={(e) =>
               patch(shot.id, (s) => ({ ...s, note: e.target.value }))
             }
           />
           {interim && <div className="interim">{interim}</div>}
+          {progress > 0 && progress < 100 && (
+            <div className="modelLoad">
+              <span style={{ width: `${progress}%` }} />
+              Downloading the speech model, once ever · {progress}%
+            </div>
+          )}
           {error && <div className="micError">{error}</div>}
         </div>
         <div className="hints">
