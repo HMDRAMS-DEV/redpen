@@ -24,7 +24,7 @@ The app is intentionally desktop-only. Mobile screens receive a short notice ins
 
 ## Run locally
 
-Requires Node.js 22.12 or newer.
+Requires Node.js 24.
 
 ```sh
 npm ci
