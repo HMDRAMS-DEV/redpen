@@ -111,7 +111,7 @@ function Editor() {
     [shot, patch],
   )
 
-  const { recording, status, progress, interim, error, toggle, stop } =
+  const { recording, progress, interim, error, toggle, stop } =
     useDictation(appendNote)
 
   const undo = useCallback(() => {
@@ -264,7 +264,6 @@ function Editor() {
           {index + 1} / {shots.length}
         </div>
         <div className="actions">
-          <SourceLink />
           <ShortcutGuide open={showGuide} onToggle={() => setShowGuide((open) => !open)} />
           <label className="ghost">
             Add
@@ -313,21 +312,12 @@ function Editor() {
           // Never take focus, so the button can't swallow keys meant for the page.
           onMouseDown={(e) => e.preventDefault()}
           disabled={!dictationSupported()}
+          aria-label={recording ? 'Stop dictation' : 'Start dictation'}
+          title={recording ? 'Stop dictation' : 'Start dictation'}
         >
           <MicIcon />
           {recording && <span className="pulse" />}
         </button>
-        <div className="micLabel">
-          <strong>
-            {status === 'listening'
-              ? 'Listening…'
-              : status === 'loading'
-                ? 'Starting…'
-                : status === 'finishing'
-                  ? 'Writing…'
-                  : 'Talk'}
-          </strong>
-        </div>
         <div className="noteBody">
           <textarea
             aria-label={`Note for ${shot.name}`}
@@ -375,6 +365,7 @@ function Editor() {
         ))}
       </div>
 
+      <SourceLink className="cornerSource" />
       {dragging && <div className="dropVeil">Drop to add</div>}
       {fileError && <div className="fileToast" role="alert">{fileError}</div>}
     </div>
@@ -491,7 +482,7 @@ function Dropzone({
 }) {
   return (
     <div className="zoneShell">
-      <SourceLink className="zoneSource" />
+      <SourceLink className="cornerSource" />
       <label className={`zone ${dragging ? 'hot' : ''}`}>
         <input
           type="file"
@@ -554,9 +545,10 @@ function SourceLink({ className = '' }: { className?: string }) {
       href={SOURCE_URL}
       target="_blank"
       rel="noreferrer"
-      aria-label="View source code"
+      aria-label="View source code on GitHub"
+      title="View source code on GitHub"
     >
-      Open source <span aria-hidden="true">↗</span>
+      <GitHubIcon />
     </a>
   )
 }
@@ -567,7 +559,7 @@ function MobileNotice() {
       <div className="mobileMark">Redpen<span className="dot" /></div>
       <h1>Redpen is made for desktop.</h1>
       <p>Open it on a Mac or PC to mark up screenshots, dictate notes, and export the set.</p>
-      <SourceLink />
+      <SourceLink className="cornerSource" />
     </main>
   )
 }
@@ -620,6 +612,14 @@ function TrashIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
       <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
+    </svg>
+  )
+}
+
+function GitHubIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path fillRule="evenodd" d="M12 2C6.477 2 2 6.59 2 12.253c0 4.53 2.865 8.374 6.84 9.73.5.094.682-.222.682-.493 0-.244-.009-.89-.014-1.747-2.782.62-3.369-1.376-3.369-1.376-.455-1.186-1.11-1.502-1.11-1.502-.908-.636.069-.623.069-.623 1.004.072 1.532 1.058 1.532 1.058.892 1.567 2.341 1.115 2.91.853.091-.663.349-1.115.635-1.371-2.221-.259-4.555-1.14-4.555-5.068 0-1.12.39-2.035 1.03-2.752-.103-.26-.447-1.302.098-2.714 0 0 .84-.276 2.75 1.05A9.34 9.34 0 0 1 12 6.953a9.3 9.3 0 0 1 2.504.345c1.909-1.326 2.747-1.05 2.747-1.05.547 1.412.203 2.454.1 2.714.64.717 1.028 1.632 1.028 2.752 0 3.938-2.338 4.806-4.566 5.06.359.318.679.947.679 1.908 0 1.378-.012 2.49-.012 2.828 0 .274.18.592.688.492C19.138 20.628 22 16.786 22 12.253 22 6.59 17.523 2 12 2Z" clipRule="evenodd" />
     </svg>
   )
 }

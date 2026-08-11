@@ -22,3 +22,15 @@ test("the remote speech model is pinned to an immutable revision", async () => {
   assert.match(worker, /const MODEL_REVISION = '[0-9a-f]{40}'/);
   assert.match(worker, /revision: MODEL_REVISION/);
 });
+
+test("the document uses the Redpen favicon instead of a starter asset", async () => {
+  const html = await readFile("index.html", "utf8");
+  const favicon = await readFile("public/favicon.svg", "utf8");
+  const touchIcon = await readFile("public/apple-touch-icon.png");
+
+  assert.match(html, /href="\/favicon\.svg"/);
+  assert.match(html, /href="\/apple-touch-icon\.png"/);
+  assert.match(favicon, /#ff2d2d/);
+  assert.doesNotMatch(favicon, /#863bff/);
+  assert.equal(touchIcon.subarray(1, 4).toString(), "PNG");
+});

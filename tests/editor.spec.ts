@@ -61,10 +61,27 @@ test('shows a desktop-only notice on mobile screens', async ({ page }) => {
 test('links to the public source repository', async ({ page }) => {
   await page.goto('/')
 
-  await expect(page.getByRole('link', { name: 'View source code' })).toHaveAttribute(
+  const source = page.getByRole('link', { name: 'View source code on GitHub' })
+  await expect(source).toHaveAttribute(
     'href',
     'https://github.com/HMDRAMS-DEV/redpen',
   )
+  await expect(source.locator('svg')).toBeVisible()
+  await expect(page.getByText('Open source', { exact: true })).toHaveCount(0)
+})
+
+test('aligns the microphone directly with the note field without a talk label', async ({ page }) => {
+  await page.goto('/')
+  await addShots(page, ['first.png'])
+
+  const mic = page.getByRole('button', { name: 'Start dictation' })
+  const note = page.getByRole('textbox', { name: 'Note for first.png' })
+  const [micBox, noteBox] = await Promise.all([mic.boundingBox(), note.boundingBox()])
+
+  expect(micBox).not.toBeNull()
+  expect(noteBox).not.toBeNull()
+  expect(Math.abs(micBox!.y + micBox!.height / 2 - (noteBox!.y + noteBox!.height / 2))).toBeLessThan(2)
+  await expect(page.getByText('Talk', { exact: true })).toHaveCount(0)
 })
 
 test('rejects active image formats', async ({ page }) => {
