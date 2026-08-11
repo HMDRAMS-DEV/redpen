@@ -4,6 +4,7 @@ import { pipeline } from '@huggingface/transformers'
 // base.en is the smallest model that reliably gets product jargon right.
 // Quantized decoder keeps the download near 50MB.
 const MODEL = 'onnx-community/whisper-base.en'
+const MODEL_REVISION = '51eefc0af78b103839eda9e7e4f4186acc6517fe'
 
 type Pipe = (audio: Float32Array, opts?: object) => Promise<{ text: string }>
 
@@ -42,6 +43,7 @@ async function getPipe() {
         }
       }
       const p = (await pipeline('automatic-speech-recognition', MODEL, {
+        revision: MODEL_REVISION,
         dtype: { encoder_model: 'fp32', decoder_model_merged: 'q8' },
         device,
         progress_callback: reportProgress(),

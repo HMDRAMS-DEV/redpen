@@ -15,3 +15,10 @@ test("Vercel applies the Redpen security-header baseline", async () => {
   assert.match(headers["Content-Security-Policy"], /frame-ancestors 'none'/);
   assert.match(headers["Content-Security-Policy"], /huggingface\.co/);
 });
+
+test("the remote speech model is pinned to an immutable revision", async () => {
+  const worker = await readFile("src/whisper.worker.ts", "utf8");
+
+  assert.match(worker, /const MODEL_REVISION = '[0-9a-f]{40}'/);
+  assert.match(worker, /revision: MODEL_REVISION/);
+});

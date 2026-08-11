@@ -6,6 +6,11 @@ import { makeZip } from './zip'
 
 const isMac = /Mac|iP(hone|ad)/.test(navigator.platform || navigator.userAgent)
 const MOD = isMac ? '⌘' : 'Ctrl'
+const SOURCE_URL = 'https://github.com/HMDRAMS-DEV/redpen'
+const DESKTOP_QUERY = '(min-width: 768px)'
+const MAX_FILE_BYTES = 25 * 1024 * 1024
+const MAX_IMAGE_PIXELS = 40_000_000
+const IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 
 function readFile(file: File): Promise<Shot> {
   return new Promise((res, rej) => {
@@ -13,7 +18,11 @@ function readFile(file: File): Promise<Shot> {
     reader.onload = () => {
       const src = reader.result as string
       const img = new Image()
-      img.onload = () =>
+      img.onload = () => {
+        if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
+          rej(new Error('Image dimensions are too large.'))
+          return
+        }
         res({
           id: crypto.randomUUID(),
           name: file.name,
@@ -23,6 +32,7 @@ function readFile(file: File): Promise<Shot> {
           strokes: [],
           note: '',
         })
+      }
       img.onerror = rej
       img.src = src
     }
@@ -31,20 +41,53 @@ function readFile(file: File): Promise<Shot> {
   })
 }
 
+function useDesktopViewport() {
+  const [desktop, setDesktop] = useState(() => window.matchMedia(DESKTOP_QUERY).matches)
+
+  useEffect(() => {
+    const query = window.matchMedia(DESKTOP_QUERY)
+    const update = () => setDesktop(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  return desktop
+}
+
 export default function App() {
+  return useDesktopViewport() ? <Editor /> : <MobileNotice />
+}
+
+function Editor() {
   const [shots, setShots] = useState<Shot[]>([])
   const [index, setIndex] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [busy, setBusy] = useState(false)
   const [zoom, setZoom] = useState(false)
   const [entering, setEntering] = useState(false)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [showGuide, setShowGuide] = useState(false)
 
   const shot = shots[index]
 
   const addFiles = useCallback(async (files: FileList | File[]) => {
-    const images = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    const selected = Array.from(files)
+    const images = selected.filter(
+      (file) => IMAGE_TYPES.has(file.type) && file.size <= MAX_FILE_BYTES,
+    )
+    if (images.length !== selected.length) {
+      setFileError('Use PNG, JPEG, or WebP screenshots up to 25 MB each.')
+    } else {
+      setFileError(null)
+    }
     if (!images.length) return
-    const added = await Promise.all(images.map(readFile))
+    let added: Shot[]
+    try {
+      added = await Promise.all(images.map(readFile))
+    } catch {
+      setFileError('One screenshot could not be opened or has unusually large dimensions.')
+      return
+    }
     setShots((prev) => {
       setIndex(prev.length)
       return [...prev, ...added]
@@ -94,6 +137,19 @@ export default function App() {
     [stop],
   )
 
+  const remove = useCallback(
+    (id: string) => {
+      stop()
+      setZoom(false)
+      setShots((prev) => {
+        const next = prev.filter((item) => item.id !== id)
+        setIndex((current) => Math.min(current, Math.max(0, next.length - 1)))
+        return next
+      })
+    },
+    [stop],
+  )
+
   // Stepping with arrows is a high-frequency action, so it only crossfades.
   // Tapping a thumbnail is deliberate and rare, so that one zooms.
   useEffect(() => {
@@ -137,10 +193,6 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = isMac ? e.metaKey : e.ctrlKey
-      const typing =
-        e.target instanceof HTMLElement &&
-        (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')
-
       // Mic is modifier-based so it still works while typing the note.
       if (mod && e.key === 'Enter') {
         e.preventDefault()
@@ -158,9 +210,17 @@ export default function App() {
         undo()
         return
       }
-      if (typing) return
-      if (e.key === 'ArrowRight') go(1)
-      else if (e.key === 'ArrowLeft') go(-1)
+      if (e.key === 'Escape') {
+        setShowGuide(false)
+        return
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        go(1)
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        go(-1)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -190,7 +250,9 @@ export default function App() {
     }
   }, [addFiles])
 
-  if (!shots.length) return <Dropzone dragging={dragging} onFiles={addFiles} />
+  if (!shots.length) {
+    return <Dropzone dragging={dragging} error={fileError} onFiles={addFiles} />
+  }
 
   return (
     <div className="app">
@@ -202,22 +264,23 @@ export default function App() {
           {index + 1} / {shots.length}
         </div>
         <div className="actions">
+          <SourceLink />
+          <ShortcutGuide open={showGuide} onToggle={() => setShowGuide((open) => !open)} />
           <label className="ghost">
             Add
             <input
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/webp"
               multiple
               hidden
               onChange={(e) => e.target.files && addFiles(e.target.files)}
             />
           </label>
           <button className="ghost" onClick={() => exportOne(shot, index)}>
-            Download <kbd>{MOD}D</kbd>
+            Download
           </button>
           <button className="primary" onClick={exportAll} disabled={busy}>
             {busy ? 'Zipping…' : `Download all · ${shots.length}`}
-            <kbd>{MOD}⇧D</kbd>
           </button>
         </div>
       </header>
@@ -264,10 +327,10 @@ export default function App() {
                   ? 'Writing…'
                   : 'Talk'}
           </strong>
-          <kbd>{MOD}⏎</kbd>
         </div>
         <div className="noteBody">
           <textarea
+            aria-label={`Note for ${shot.name}`}
             value={shot.note}
             placeholder={
               dictationSupported()
@@ -287,31 +350,33 @@ export default function App() {
           )}
           {error && <div className="micError">{error}</div>}
         </div>
-        <div className="hints">
-          <span>
-            <kbd>←</kbd>
-            <kbd>→</kbd> move
-          </span>
-          <span>
-            <kbd>{MOD}Z</kbd> undo
-          </span>
-        </div>
       </footer>
 
       <div className="film">
         {shots.map((s, i) => (
-          <button
-            key={s.id}
-            className={`thumb ${i === index ? 'active' : ''}`}
-            onClick={() => jump(i)}
-          >
-            <img src={s.src} alt="" />
-            {s.note.trim() && <span className="badge" />}
-          </button>
+          <div key={s.id} className={`thumbSlot ${i === index ? 'active' : ''}`}>
+            <button
+              className="thumb"
+              aria-label={`View ${s.name}`}
+              onClick={() => jump(i)}
+            >
+              <img src={s.src} alt="" />
+              {s.note.trim() && <span className="badge" />}
+            </button>
+            <button
+              className="thumbDelete"
+              aria-label={`Delete ${s.name}`}
+              title={`Delete ${s.name}`}
+              onClick={() => remove(s.id)}
+            >
+              <TrashIcon />
+            </button>
+          </div>
         ))}
       </div>
 
       {dragging && <div className="dropVeil">Drop to add</div>}
+      {fileError && <div className="fileToast" role="alert">{fileError}</div>}
     </div>
   )
 }
@@ -326,9 +391,13 @@ function NavButton({
   onClick: () => void
 }) {
   return (
-    <button className="nav" onClick={onClick} disabled={disabled}>
+    <button
+      className="nav"
+      aria-label={dir === -1 ? 'Previous image' : 'Next image'}
+      onClick={onClick}
+      disabled={disabled}
+    >
       <span className="chev">{dir === -1 ? '‹' : '›'}</span>
-      <kbd>{dir === -1 ? '←' : '→'}</kbd>
     </button>
   )
 }
@@ -413,32 +482,93 @@ function Sketchpad({
 
 function Dropzone({
   dragging,
+  error,
   onFiles,
 }: {
   dragging: boolean
+  error: string | null
   onFiles: (f: FileList) => void
 }) {
   return (
-    <label className={`zone ${dragging ? 'hot' : ''}`}>
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        hidden
-        onChange={(e) => e.target.files && onFiles(e.target.files)}
-      />
-      <div className="zoneMark">
-        Redpen<span className="dot" />
-      </div>
-      <p className="zoneTag">Circle what's broken. Say why. Download the whole set.</p>
-      <ShotStack />
-      <div className="zoneCta">
-        <strong>Drop your screenshots anywhere</strong>
-        <span>
-          or <u>click to choose</u> · PNG or JPG · as many as you like
-        </span>
-      </div>
-    </label>
+    <div className="zoneShell">
+      <SourceLink className="zoneSource" />
+      <label className={`zone ${dragging ? 'hot' : ''}`}>
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          multiple
+          hidden
+          onChange={(e) => e.target.files && onFiles(e.target.files)}
+        />
+        <div className="zoneMark">
+          Redpen<span className="dot" />
+        </div>
+        <p className="zoneTag">Circle what's broken. Say why. Download the whole set.</p>
+        <ShotStack />
+        <div className="zoneCta">
+          <strong>Drop your screenshots anywhere</strong>
+          <span>
+            or <u>click to choose</u> · PNG, JPEG, or WebP · up to 25 MB each
+          </span>
+        </div>
+        {error && <div className="fileError" role="alert">{error}</div>}
+      </label>
+    </div>
+  )
+}
+
+function ShortcutGuide({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+  return (
+    <div className="guide">
+      <button
+        className="guideButton"
+        aria-label="Keyboard shortcuts"
+        aria-expanded={open}
+        aria-controls="shortcut-guide"
+        title="Keyboard shortcuts"
+        onClick={onToggle}
+      >
+        <InfoIcon />
+      </button>
+      {open && (
+        <div className="guideCard" id="shortcut-guide">
+          <h2>Keyboard shortcuts</h2>
+          <p>These work while the note field is focused.</p>
+          <dl>
+            <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move between images</dd></div>
+            <div><dt><kbd>{MOD}⏎</kbd></dt><dd>Start or stop dictation</dd></div>
+            <div><dt><kbd>{MOD}Z</kbd></dt><dd>Undo the last mark</dd></div>
+            <div><dt><kbd>{MOD}D</kbd></dt><dd>Download this image</dd></div>
+            <div><dt><kbd>{MOD}⇧D</kbd></dt><dd>Download the full set</dd></div>
+          </dl>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SourceLink({ className = '' }: { className?: string }) {
+  return (
+    <a
+      className={`sourceLink ${className}`.trim()}
+      href={SOURCE_URL}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="View source code"
+    >
+      Open source <span aria-hidden="true">↗</span>
+    </a>
+  )
+}
+
+function MobileNotice() {
+  return (
+    <main className="mobileNotice">
+      <div className="mobileMark">Redpen<span className="dot" /></div>
+      <h1>Redpen is made for desktop.</h1>
+      <p>Open it on a Mac or PC to mark up screenshots, dictate notes, and export the set.</p>
+      <SourceLink />
+    </main>
   )
 }
 
@@ -473,6 +603,23 @@ function MicIcon() {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <rect x="9" y="2" width="6" height="11" rx="3" />
       <path d="M5 11a7 7 0 0 0 14 0M12 18v4" />
+    </svg>
+  )
+}
+
+function InfoIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v6M12 7.5h.01" />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+      <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" />
     </svg>
   )
 }

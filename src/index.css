@@ -28,6 +28,15 @@ body {
 
 button, textarea, input { font: inherit; color: inherit; }
 button { cursor: pointer; border: none; background: none; }
+a { color: inherit; }
+
+button:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+.guideButton:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 3px;
+}
 
 kbd {
   display: inline-block;
@@ -53,6 +62,10 @@ kbd {
 }
 
 /* ---------- dropzone ---------- */
+.zoneShell {
+  position: relative;
+  height: 100%;
+}
 .zone {
   position: relative;
   height: 100%;
@@ -64,6 +77,12 @@ kbd {
   cursor: pointer;
   text-align: center;
   overflow: hidden;
+}
+.zoneSource {
+  position: absolute;
+  z-index: 2;
+  top: 22px;
+  right: 24px;
 }
 /* Soft pool of light rather than a boxed-in target — the whole page accepts a drop. */
 .zone::before {
@@ -181,6 +200,11 @@ kbd {
   text-underline-offset: 3px;
   transition: color 160ms var(--ease-out);
 }
+.fileError {
+  margin-top: 18px;
+  color: #ff8b8b;
+  font-size: 14px;
+}
 
 @media (hover: hover) and (pointer: fine) {
   .zone:hover .c1 { transform: translateX(-50%) translateX(-54px) rotate(-14deg); }
@@ -206,6 +230,51 @@ kbd {
 .counter { font-size: 16px; color: var(--dim); font-variant-numeric: tabular-nums; }
 .actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
 
+.sourceLink {
+  color: #81818a;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 140ms var(--ease-out);
+}
+.sourceLink span { color: #b1b1b8; }
+
+.guide { position: relative; }
+.guideButton {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color 140ms var(--ease-out), background 140ms var(--ease-out);
+}
+.guideButton[aria-expanded='true'] { color: var(--text); background: #202024; }
+.guideCard {
+  position: absolute;
+  z-index: 10;
+  top: 44px;
+  right: 0;
+  width: 330px;
+  padding: 18px;
+  border: 1px solid #303036;
+  border-radius: 12px;
+  background: #17171a;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+.guideCard h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.guideCard p { margin: 4px 0 14px; color: var(--dim); font-size: 13px; }
+.guideCard dl { margin: 0; }
+.guideCard dl > div {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  align-items: center;
+  min-height: 38px;
+  border-top: 1px solid var(--line);
+}
+.guideCard dt, .guideCard dd { margin: 0; }
+.guideCard dd { color: #b7b7be; font-size: 13px; }
+
 .ghost, .primary {
   display: inline-flex;
   align-items: center;
@@ -220,13 +289,14 @@ kbd {
 }
 .ghost { background: #1a1a1d; color: var(--text); }
 .primary { background: var(--pen); color: #fff; font-weight: 500; }
-.primary kbd { border-color: rgba(255,255,255,0.3); background: rgba(0,0,0,0.22); color: #fff; }
 .ghost:active, .primary:active { transform: scale(0.97); }
 .primary:disabled { opacity: 0.55; cursor: default; transform: none; }
 
 @media (hover: hover) and (pointer: fine) {
   .ghost:hover { background: #232327; }
   .primary:hover:not(:disabled) { background: #e02525; }
+  .sourceLink:hover { color: var(--text); }
+  .guideButton:hover { color: var(--text); background: #1b1b1f; }
 }
 
 /* ---------- stage ---------- */
@@ -384,15 +454,6 @@ kbd {
   transition: width 300ms var(--ease-out);
 }
 
-.hints {
-  flex: none;
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  color: #74747c;
-  font-size: 14px;
-}
-
 /* ---------- filmstrip ---------- */
 .film {
   display: flex;
@@ -401,10 +462,13 @@ kbd {
   overflow-x: auto;
   border-top: 1px solid var(--line);
 }
-.thumb {
+.thumbSlot {
   position: relative;
   flex: none;
   width: 52px; height: 68px;
+}
+.thumb {
+  width: 100%; height: 100%;
   padding: 0;
   border-radius: 7px;
   overflow: hidden;
@@ -416,11 +480,33 @@ kbd {
     transform 160ms var(--ease-out);
 }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.thumb.active { opacity: 1; outline-color: var(--pen); }
+.thumbSlot.active .thumb { opacity: 1; outline-color: var(--pen); }
 .thumb:active { transform: scale(0.95); }
+
+.thumbDelete {
+  position: absolute;
+  z-index: 2;
+  top: -7px;
+  right: -7px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #3b3b40;
+  border-radius: 50%;
+  background: #161619;
+  color: #aaaab2;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out), color 140ms var(--ease-out), background 140ms var(--ease-out);
+}
+.thumbSlot.active .thumbDelete,
+.thumbSlot:focus-within .thumbDelete { opacity: 1; transform: scale(1); }
 
 @media (hover: hover) and (pointer: fine) {
   .thumb:hover { opacity: 0.85; transform: translateY(-2px); }
+  .thumbSlot:hover .thumbDelete { opacity: 1; transform: scale(1); }
+  .thumbDelete:hover { color: #fff; background: var(--pen); border-color: var(--pen); }
 }
 
 .badge {
@@ -442,10 +528,46 @@ kbd {
   pointer-events: none;
 }
 
+.fileToast {
+  position: fixed;
+  z-index: 20;
+  right: 18px;
+  bottom: 92px;
+  max-width: 360px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 45, 45, 0.35);
+  border-radius: 9px;
+  background: #211518;
+  color: #ffadad;
+  font-size: 13px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
+}
+
+.mobileNotice {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 34px;
+  text-align: center;
+}
+.mobileNotice::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 42%, #1c1c22 0%, transparent 62%);
+  pointer-events: none;
+}
+.mobileNotice > * { position: relative; }
+.mobileMark { margin-bottom: 24px; font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+.mobileNotice h1 { max-width: 310px; margin: 0; font-size: 30px; line-height: 1.08; letter-spacing: -0.035em; }
+.mobileNotice p { max-width: 330px; margin: 14px 0 24px; color: var(--dim); font-size: 16px; }
+
 /* Keep the meaning-carrying fades; drop the movement. */
 @media (prefers-reduced-motion: reduce) {
   .canvasWrap[data-zoom][data-entering] { transform: none; }
-  .ghost:active, .primary:active, .nav:active, .mic:active, .thumb:active { transform: none; }
+  .ghost:active, .primary:active, .nav:active, .mic:active, .thumb:active, .thumbDelete { transform: none; }
   .thumb:hover { transform: none; }
   .pulse { animation: none; opacity: 0.6; }
   .scribble path { animation: none; stroke-dashoffset: 0; }
