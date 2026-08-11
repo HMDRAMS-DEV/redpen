@@ -76,12 +76,27 @@ test('aligns the microphone directly with the note field without a talk label', 
 
   const mic = page.getByRole('button', { name: 'Start dictation' })
   const note = page.getByRole('textbox', { name: 'Note for first.png' })
-  const [micBox, noteBox] = await Promise.all([mic.boundingBox(), note.boundingBox()])
+  const [micBox, firstLineCenter] = await Promise.all([
+    mic.boundingBox(),
+    note.evaluate((element) => {
+      const style = getComputedStyle(element)
+      const box = element.getBoundingClientRect()
+      return box.y + parseFloat(style.paddingTop) + parseFloat(style.lineHeight) / 2
+    }),
+  ])
 
   expect(micBox).not.toBeNull()
-  expect(noteBox).not.toBeNull()
-  expect(Math.abs(micBox!.y + micBox!.height / 2 - (noteBox!.y + noteBox!.height / 2))).toBeLessThan(2)
+  expect(Math.abs(micBox!.y + micBox!.height / 2 - firstLineCenter)).toBeLessThan(2)
   await expect(page.getByText('Talk', { exact: true })).toHaveCount(0)
+})
+
+test('renders the keyboard-shortcuts info symbol with a real dot', async ({ page }) => {
+  await page.goto('/')
+  await addShots(page, ['first.png'])
+
+  const icon = page.getByRole('button', { name: 'Keyboard shortcuts' }).locator('svg')
+  await expect(icon.locator(':scope > circle')).toHaveCount(2)
+  await expect(icon.locator(':scope > circle').nth(1)).toHaveAttribute('r', '1.25')
 })
 
 test('rejects active image formats', async ({ page }) => {

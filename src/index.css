@@ -394,7 +394,6 @@ kbd {
   place-items: center;
   background: #1c1c20;
   color: var(--text);
-  margin-top: 1px;
   transition: background 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
 .mic.on { background: var(--pen); color: #fff; }
@@ -427,7 +426,8 @@ kbd {
   outline: none;
   background: transparent;
   font-size: 17px;
-  line-height: 1.45;
+  line-height: 24px;
+  padding: 13px 0 0;
 }
 .noteBody textarea::placeholder { color: #6a6a72; }
 .interim { font-size: 17px; color: var(--dim); font-style: italic; }
