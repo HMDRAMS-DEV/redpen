@@ -4,7 +4,7 @@ A menu bar app for marking up screenshots the way a teacher marks a page. Circle
 
 **[Download for Mac](https://github.com/HMDRAMS-DEV/redpen/releases/latest)** · [redpen.ramihmd.com](https://redpen.ramihmd.com)
 
-Requires macOS 15 or later. Redpen is ad-hoc signed and not notarized, so on first launch macOS may block it. Open System Settings, Privacy & Security, and click Open Anyway.
+Requires macOS 15 or later. Signed with a Developer ID and notarized by Apple.
 
 ## How it works
 
@@ -54,7 +54,7 @@ TEST_RUNNER_REDPEN_SNAPSHOTS=1 xcodebuild -project Redpen.xcodeproj -scheme Redp
 
 The images land in `$TMPDIR/RedpenSnapshots`.
 
-`scripts/make-dmg.sh` builds Release and writes `site/downloads/Redpen.dmg`. The app is ad-hoc signed and not notarized. The app icon is drawn by `scripts/render-icon.swift`.
+`scripts/make-dmg.sh` builds Release and writes `site/downloads/Redpen.dmg`. It signs with the HMDFV Inc. Developer ID; `scripts/release.sh` notarizes it. The app icon is drawn by `scripts/render-icon.swift`.
 
 Redpen isn't sandboxed, because it reads screenshots wherever macOS saves them and opens Superwhisper's deep links.
 
