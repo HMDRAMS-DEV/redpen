@@ -65,8 +65,27 @@
   .btn:hover { transform: scale(1.03); }
   .btn:active { transform: scale(.97); }
   .btn svg { width: 18px; height: 18px; }
-  .btn-get { width: 200px; background: var(--button); color: var(--button-ink); }
-  @media (hover: hover) { .btn-get:hover { background: var(--pen); color: #fff; } }
+  .btn-get { width: 200px; background: var(--button); color: var(--button-ink); position: relative; overflow: hidden; isolation: isolate; }
+  .btn-get span, .btn-get svg { position: relative; }
+
+  /* Hover: marked-up screens flash through the fill. */
+  .btn-get::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0; background: url('/assets/sample.png') center / cover no-repeat; }
+  .btn-get::after { content: ''; position: absolute; inset: 0; z-index: -1; background: rgba(0,0,0,.4); opacity: 0; }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .btn-get:hover::before { opacity: 1; animation: flash .64s step-end infinite; }
+    .btn-get:hover::after { opacity: 1; }
+    .btn-get:hover { color: #fff; }
+  }
+  @keyframes flash {
+    0%    { background-image: url('/assets/sample.png'); background-size: 320%; background-position: 88% 12%; }
+    12.5% { background-image: url('/assets/editor-light.png'); background-size: 260%; background-position: 50% 30%; }
+    25%   { background-image: url('/assets/sample.png'); background-size: 360%; background-position: 38% 20%; }
+    37.5% { background-image: url('/assets/editor-light.png'); background-size: 300%; background-position: 60% 20%; }
+    50%   { background-image: url('/assets/sample.png'); background-size: 280%; background-position: 50% 96%; }
+    62.5% { background-image: url('/assets/editor-light.png'); background-size: 200%; background-position: 40% 90%; }
+    75%   { background-image: url('/assets/sample.png'); background-size: 340%; background-position: 62% 68%; }
+    87.5% { background-image: url('/assets/sample.png'); background-size: 200%; background-position: 50% 40%; }
+  }
   .btn-secondary { width: 195px; background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); }
   .req { margin: 16px 0 0; font-size: 13px; color: var(--faint); }
 
@@ -116,8 +135,8 @@
   @keyframes wave { 50% { height: 22px; } }
 
   /* 2. The long note, under the image. */
-  .sheet { width: 78%; border-radius: 14px; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.14), 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent); transform: translateY(24%); transition: transform 1.8s var(--ease) .3s; }
-  .point.seen .sheet { transform: translateY(-12%); }
+  .sheet { width: min(78%, 360px); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.14), 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent); opacity: 0; transform: translateY(40px) scale(.97); transition: transform 1.1s var(--ease) .2s, opacity .9s var(--ease) .2s; }
+  .point.seen .sheet { opacity: 1; transform: none; }
   .sheet img { width: 100%; height: auto; }
 
   /* 3. Notifications slide in and stack. */
@@ -160,7 +179,7 @@
     .copy > *, .window, .page .said span { opacity: 1 !important; transform: none !important; filter: none !important; }
     .hero h1 .circled path, .page .clean { stroke-dashoffset: 0 !important; }
     .page .rough { opacity: 0 !important; }
-    .sheet { transform: translateY(-12%) !important; }
+    .sheet { opacity: 1 !important; transform: none !important; }
   }
   @media (max-width: 900px) {
     .nav { padding: 20px 16px; }
