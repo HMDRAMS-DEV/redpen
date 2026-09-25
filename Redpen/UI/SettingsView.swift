@@ -6,6 +6,7 @@ struct SettingsView: View {
 
     var body: some View {
         @Bindable var voice = store.voice
+        @Bindable var updater = Updater.shared
         Form {
             Section {
                 Picker("Voice", selection: $voice.engine) {
@@ -36,6 +37,13 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
                 Text("Screenshots")
+            }
+
+            Section("Updates") {
+                Toggle("Check for updates automatically", isOn: $updater.automaticallyChecks)
+                LabeledContent("Version \(updater.version)") {
+                    Button("Check Now") { updater.check() }
+                }
             }
         }
         .formStyle(.grouped)

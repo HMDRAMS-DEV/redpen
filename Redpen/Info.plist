@@ -32,9 +32,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.1.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSUIElement</key>
@@ -47,5 +47,11 @@
 	<string>Redpen listens while you talk, so your note appears beside what you circled.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Redpen turns what you say into notes on your screenshots. Speech is recognized on this Mac.</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://redpen.ramihmd.com/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>qOxwZqP7ofp2K4TUTCMqAA5P8EF/sbNrcEubiWKNHTE=</string>
 </dict>
 </plist>

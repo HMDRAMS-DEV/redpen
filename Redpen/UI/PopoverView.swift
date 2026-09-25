@@ -10,6 +10,10 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 12) {
             Wordmark(size: 20)
 
+            if let version = Updater.shared.available {
+                UpdateTile(version: version)
+            }
+
             if !store.pending.isEmpty {
                 PendingTile()
             }
@@ -88,6 +92,7 @@ struct PopoverView: View {
             Menu {
                 Button("Open Redpen") { open(WindowID.editor) }
                 Button("Settings…") { open(WindowID.settings) }
+                Button("Check for Updates…") { Updater.shared.check() }
                 Divider()
                 Button("Quit Redpen") { NSApp.terminate(nil) }
             } label: {
@@ -123,6 +128,31 @@ struct PopoverView: View {
     private func open(_ id: String) {
         openWindow(id: id)
         NSApp.activate()
+    }
+}
+
+/// An update a background check found. Sparkle takes over from the button.
+struct UpdateTile: View {
+    let version: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "arrow.down.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(Theme.pen)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Update available")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("Redpen \(version) is ready.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            Button("Update") { Updater.shared.check() }
+                .buttonStyle(PillButtonStyle(compact: true))
+        }
+        .padding(10)
+        .tile()
     }
 }
 

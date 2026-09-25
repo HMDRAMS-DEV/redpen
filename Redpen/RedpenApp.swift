@@ -58,6 +58,7 @@ struct MenuBarLabel: View {
 final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
+        _ = Updater.shared
     }
 
     /// Images opened with Redpen from Finder, or dropped on its Dock icon.

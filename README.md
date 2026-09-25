@@ -58,6 +58,18 @@ The images land in `$TMPDIR/RedpenSnapshots`.
 
 Redpen isn't sandboxed, because it reads screenshots wherever macOS saves them and opens Superwhisper's deep links.
 
+## Updates and releases
+
+Both the app and the site use [Sparkle](https://sparkle-project.org). The app reads `site/appcast.xml` from the website once a day. An update found right after launch opens Sparkle's window; one found later waits as an "Update available" tile in the popover. **Check for Updates…** is in the popover's ⋯ menu and in Settings.
+
+To ship a release, bump `CFBundleShortVersionString` and `CFBundleVersion` in `project.yml`, commit, then run:
+
+```sh
+scripts/release.sh "What changed, in a sentence or two."
+```
+
+It builds the disk image, notarizes it when a `ramihmd-notary` notarytool profile exists, signs it for Sparkle, creates the GitHub release, adds the release to `site/appcast.xml`, commits, pushes, and deploys the site. The Sparkle signing key lives in the login keychain; back it up with `generate_keys -x` (the tool is in Xcode's SourcePackages at `artifacts/sparkle/Sparkle/bin`).
+
 ## Site
 
 `site/` is the landing page at redpen.ramihmd.com, a static Vercel deployment. Deploy from `site/` with `vercel deploy --prod`.
