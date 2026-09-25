@@ -41,12 +41,12 @@ func draw(in context: CGContext, size: CGFloat) {
     context.strokePath()
     context.restoreGState()
 
-    // Lines of text on the page. The circled one is ink; the rest are quiet.
+    // Lines of text on the page, centered on the tile. The circled one is ink; the rest are quiet.
     let lines: [(y: CGFloat, width: CGFloat, dark: Bool)] = [
-        (664, 470, false), (584, 380, false), (504, 300, true), (424, 440, false), (344, 340, false),
+        (672, 470, false), (592, 380, false), (512, 300, true), (432, 440, false), (352, 340, false),
     ]
     for line in lines {
-        let rect = CGRect(x: 262, y: line.y - 17, width: line.width, height: 34)
+        let rect = CGRect(x: 512 - line.width / 2, y: line.y - 17, width: line.width, height: 34)
         context.addPath(CGPath(roundedRect: rect, cornerWidth: 17, cornerHeight: 17, transform: nil))
         context.setFillColor(line.dark ? color(0x0D0D0D, 0.78) : color(0x0D0D0D, 0.12))
         context.fillPath()
@@ -54,7 +54,7 @@ func draw(in context: CGContext, size: CGFloat) {
 
     // The loop, drawn like the app draws one: it overshoots and lands a little wider.
     let path = CGMutablePath()
-    let center = CGPoint(x: 420, y: 506), a: CGFloat = 250, b: CGFloat = 92, tilt: CGFloat = 0.07
+    let center = CGPoint(x: 512, y: 512), a: CGFloat = 250, b: CGFloat = 92, tilt: CGFloat = 0.07
     let start: CGFloat = 2.5, sweep = 2 * CGFloat.pi + 0.55
     for step in 0...160 {
         let t = CGFloat(step) / 160
