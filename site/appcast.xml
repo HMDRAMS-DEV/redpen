@@ -7,6 +7,15 @@
     <language>en</language>
     <!-- releases -->
     <item>
+      <title>Redpen 0.1.2</title>
+      <pubDate>Fri, 25 Sep 2026 20:35:08 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>Redpen is now signed and notarized by Apple, so it opens without a security prompt. The installer's colors are brighter too.</p>]]></description>
+      <enclosure url="https://github.com/HMDRAMS-DEV/redpen/releases/download/v0.1.2/Redpen.dmg" type="application/octet-stream" sparkle:edSignature="8vpWXPEjoIQwd+hLVWIXfxMJuCvAStC/jXRJ4SDMVMtYw1j87oS2Txw0q6EjsHvV+csveQyI1lJsryw1AdlqAA==" length="2183538"/>
+    </item>
+    <item>
       <title>Redpen 0.1.1</title>
       <pubDate>Fri, 25 Sep 2026 17:22:04 +0000</pubDate>
       <sparkle:version>2</sparkle:version>
