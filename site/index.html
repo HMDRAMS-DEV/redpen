@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redpen</title>
+<meta name="description" content="A Mac menu bar app for marking up screenshots. Circle anything, say why, and paste the set into your chat.">
+<meta property="og:title" content="Redpen">
+<meta property="og:description" content="Circle it. Say it. Paste it into your chat.">
+<meta property="og:image" content="/assets/icon.png">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FFFFFF; --panel: #F2F1EF; --card: #FFFFFF; --ink: #000000; --text: #333333; --muted: #7A7A7A; --faint: #B5B5B5;
+    --line: #E2E2E2; --button: #000000; --button-ink: #FFFFFF;
+    --pen: #E5271E; --paper: #F7F5F3;
+    --hand: 'Noteworthy', 'Caveat', 'Bradley Hand', cursive;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141414; --panel: #1C1C1C; --card: #262626; --ink: #FFFFFF; --text: #D6D6D6; --muted: #9A9A9A; --faint: #5A5A5A;
+      --line: #2C2C2C; --button: #FFFFFF; --button-ink: #000000;
+      --pen: #FF5A4E; --paper: #202020;
+      color-scheme: dark;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+  #how { scroll-margin-top: 40px; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  img { display: block; }
+  a { color: inherit; text-decoration: none; }
+  ::selection { background: var(--pen); color: #fff; }
+
+  /* Nav */
+  .nav { display: flex; justify-content: space-between; align-items: center; padding: 25px 46px 0; font-size: 16px; line-height: 20px; }
+  .nav-brand { display: flex; align-items: center; gap: 8px; color: var(--text); font-weight: 500; transition: opacity .15s ease; }
+  .nav-brand img { width: 24px; height: 24px; }
+  .nav-brand:hover { opacity: .6; }
+  .nav-source { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: var(--muted); transition: color .2s var(--ease), background .2s var(--ease), transform .2s var(--ease); }
+  .nav-source svg { width: 20px; height: 20px; }
+  .nav-source:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); transform: rotate(-8deg) scale(1.06); }
+
+  /* Hero */
+  .hero { text-align: center; padding-top: 112px; }
+  .hero h1 { max-width: 900px; margin: 0 auto; font-size: 72px; line-height: 76px; font-weight: 700; letter-spacing: -0.025em; }
+  .hero h1 .circled { position: relative; display: inline-block; margin: 0 .14em; }
+  .hero h1 .circled svg { position: absolute; left: -9%; top: -14%; width: 118%; height: 128%; overflow: visible; pointer-events: none; }
+  .hero h1 .circled path { fill: none; stroke: var(--pen); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .hero.drawn h1 .circled path { transition: stroke-dashoffset 1.1s var(--ease) .45s; stroke-dashoffset: 0; }
+  .hero .sub { max-width: 720px; margin: 20px auto 0; font-size: 24px; line-height: 32px; font-weight: 400; color: var(--muted); letter-spacing: -0.005em; }
+  .buttons { display: flex; justify-content: center; gap: 14px; margin-top: 55px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px; height: 53px; border-radius: 999px;
+    font-size: 15px; font-weight: 500; white-space: nowrap; transition: transform .2s var(--ease), background .2s var(--ease), color .2s var(--ease);
+  }
+  .btn:hover { transform: scale(1.03); }
+  .btn:active { transform: scale(.97); }
+  .btn svg { width: 18px; height: 18px; }
+  .btn-get { width: 200px; background: var(--button); color: var(--button-ink); }
+  @media (hover: hover) { .btn-get:hover { background: var(--pen); color: #fff; } }
+  .btn-secondary { width: 195px; background: var(--bg); color: var(--ink); border: 1.5px solid var(--line); }
+  .req { margin: 16px 0 0; font-size: 13px; color: var(--faint); }
+
+  /* The app, on a quiet field of dots that turn red when you reach for the download. */
+  .showcase { position: relative; max-width: 1280px; margin: 64px auto 0; padding: 40px 46px 0; }
+  #halo { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .window {
+    position: relative; margin: 0 auto; max-width: 1100px;
+    opacity: 0; transform: translateY(40px) scale(.97); filter: blur(8px);
+    transition: transform 1.1s var(--ease), opacity .9s var(--ease), filter .9s var(--ease);
+  }
+  .showcase.seen .window { opacity: 1; transform: none; filter: none; }
+  .window img { width: 100%; height: auto; }
+  body.alive .showcase.seen .window { transform: translateY(-6px) scale(1.01); }
+
+  /* Points, one at a time. */
+  .points { max-width: 1180px; margin: 140px auto 0; padding: 0 46px; display: grid; gap: 140px; }
+  .point { display: grid; grid-template-columns: 1.25fr 1fr; gap: 80px; align-items: center; }
+  .point:nth-child(even) .visual { order: 2; }
+  .visual { position: relative; height: 440px; border-radius: 28px; background: var(--panel); overflow: hidden; display: grid; place-items: center; }
+  .label { margin: 0; font-size: 12px; line-height: 16px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--pen); }
+  .point h2 { margin: 14px 0 0; font-size: 40px; line-height: 44px; font-weight: 700; letter-spacing: -0.025em; }
+  .point p { margin: 16px 0 0; font-size: 18px; line-height: 26px; color: var(--muted); max-width: 380px; }
+  .copy > * { opacity: 0; transform: translateY(14px); filter: blur(6px); transition: all .9s var(--ease); }
+  .copy > :nth-child(2) { transition-delay: .08s; }
+  .copy > :nth-child(3) { transition-delay: .16s; }
+  .point.seen .copy > * { opacity: 1; transform: none; filter: none; }
+
+  /* 1. A scribble becomes a clean circle, then the note writes itself beside it. */
+  .page { position: relative; width: 420px; height: 280px; border-radius: 18px; background: var(--card); box-shadow: 0 20px 50px rgba(0,0,0,.08), 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent); }
+  .page i { position: absolute; left: 36px; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 11%, transparent); }
+  .page i.key { background: color-mix(in srgb, var(--ink) 70%, transparent); }
+  .page svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .page path { fill: none; stroke: var(--pen); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+  .page .rough { stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 1; }
+  .page .clean { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .page.play .rough { transition: stroke-dashoffset 1.1s cubic-bezier(.5,.1,.4,1), opacity .25s ease 1.25s; stroke-dashoffset: 0; opacity: 0; }
+  .page.play .clean { transition: stroke-dashoffset .5s var(--ease) 1.25s; stroke-dashoffset: 0; }
+  .page .said { position: absolute; left: 292px; top: 108px; font-family: var(--hand); font-size: 30px; line-height: 1; font-weight: 700; color: var(--pen); white-space: nowrap; }
+  .page .said span { opacity: 0; }
+  .page.said-in .said span { animation: letter .25s var(--ease) both; animation-delay: calc(var(--i) * 45ms); }
+  @keyframes letter { from { opacity: 0; transform: translateY(4px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+  .mic { position: absolute; left: 292px; top: 150px; display: inline-flex; gap: 3px; align-items: center; height: 24px; opacity: 0; transition: opacity .3s ease; }
+  .mic b { width: 3px; border-radius: 2px; background: var(--pen); height: 6px; }
+  .page.listening .mic { opacity: 1; }
+  .page.listening .mic b { animation: wave .9s ease-in-out infinite; animation-delay: calc(var(--i) * -120ms); }
+  @keyframes wave { 50% { height: 22px; } }
+
+  /* 2. The long note, under the image. */
+  .sheet { width: 78%; border-radius: 14px; overflow: hidden; box-shadow: 0 30px 70px rgba(0,0,0,.14), 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent); transform: translateY(24%); transition: transform 1.8s var(--ease) .3s; }
+  .point.seen .sheet { transform: translateY(-12%); }
+  .sheet img { width: 100%; height: auto; }
+
+  /* 3. Notifications slide in and stack. */
+  .nudges { position: relative; width: 360px; height: 200px; }
+  .note {
+    position: absolute; top: 0; left: 0; right: 0; display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: center;
+    padding: 14px 16px; border-radius: 18px; background: color-mix(in srgb, var(--card) 90%, transparent);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 10px 30px rgba(0,0,0,.10), 0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent);
+    transform-origin: top center;
+    transition: transform .8s var(--ease), opacity .6s var(--ease), filter .6s var(--ease);
+  }
+  .note img { width: 38px; height: 38px; }
+  .note b { display: block; font-size: 14px; font-weight: 600; color: var(--ink); }
+  .note span { display: block; font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .note time { position: absolute; top: 14px; right: 16px; font-size: 12px; color: var(--faint); }
+  .nudges-bg { position: absolute; inset: 0; background: radial-gradient(55% 60% at 30% 25%, color-mix(in srgb, var(--pen) 16%, transparent), transparent 70%); }
+
+  /* 4. Superwhisper listens; the words land in red. */
+  .listen { display: grid; justify-items: center; gap: 26px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; font-size: 15px; font-weight: 600; color: var(--pen); background: color-mix(in srgb, var(--pen) 13%, transparent); }
+  .bars { display: inline-flex; gap: 3px; align-items: center; height: 16px; }
+  .bars b { width: 3px; height: 5px; border-radius: 2px; background: currentColor; animation: wave2 .9s ease-in-out infinite; animation-delay: calc(var(--i) * -110ms); }
+  @keyframes wave2 { 50% { height: 16px; } }
+  .transcript { min-height: 44px; font-family: var(--hand); font-size: 34px; font-weight: 700; color: var(--pen); }
+  .transcript::after { content: ''; display: inline-block; width: 2px; height: 30px; margin-left: 3px; vertical-align: -4px; background: var(--pen); animation: caret 1s step-end infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+
+  /* Footer */
+  .footer { display: flex; align-items: center; justify-content: space-between; max-width: 1440px; margin: 0 auto; padding: 160px 70px 110px 65px; }
+  .footer-brand { display: flex; align-items: center; gap: 20px; }
+  .footer-brand img { width: 79px; height: 79px; }
+  .footer-brand span { font-size: 30px; line-height: 36px; font-weight: 500; letter-spacing: -0.01em; }
+  .footer-brand small { display: block; margin-top: 4px; font-size: 14px; color: var(--muted); }
+  .footer .buttons { margin-top: 0; }
+  .legal { margin: 0; padding: 10px 20px; font-size: 12px; line-height: 16px; color: var(--faint); border-top: 1px dotted var(--line); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+    .copy > *, .window, .page .said span { opacity: 1 !important; transform: none !important; filter: none !important; }
+    .hero h1 .circled path, .page .clean { stroke-dashoffset: 0 !important; }
+    .page .rough { opacity: 0 !important; }
+    .sheet { transform: translateY(-12%) !important; }
+  }
+  @media (max-width: 900px) {
+    .nav { padding: 20px 16px; }
+    .hero { padding-top: 56px; }
+    .hero h1 { font-size: 44px; line-height: 48px; padding: 0 16px; }
+    .hero .sub { font-size: 20px; line-height: 26px; padding: 0 16px; }
+    .buttons { flex-direction: column; align-items: center; gap: 8px; margin-top: 36px; }
+    .btn { height: 45px; font-size: 14px; }
+    .btn-get, .btn-secondary { width: 190px; }
+    .showcase { margin-top: 40px; padding: 20px 16px 0; }
+    .points { padding: 0 16px; gap: 80px; margin-top: 90px; }
+    .point { grid-template-columns: 1fr; gap: 28px; }
+    .point:nth-child(even) .visual { order: 0; }
+    .visual { height: 360px; }
+    .page { transform: scale(.72); }
+    .nudges { width: 300px; }
+    .point h2 { font-size: 32px; line-height: 36px; }
+    .footer { flex-direction: column; gap: 32px; padding: 100px 16px 72px; }
+  }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav-brand" href="/"><img src="/assets/icon.png" alt="">Redpen</a>
+    <a class="nav-source" href="https://github.com/HMDRAMS-DEV/redpen" aria-label="Redpen on GitHub" title="Source on GitHub"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+  </nav>
+
+  <header class="hero">
+    <h1>Mark up screenshots like a teacher <span class="circled">grades<svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true"><path pathLength="1" d="M84 12C66 2 24 3 9 18S6 52 36 57s60-1 62-24S84 3 52 4"/></svg></span> a page.</h1>
+    <p class="sub">Circle anything, say what's wrong, and it's written beside the circle in red pen. Then paste the set into your chat.</p>
+    <div class="buttons">
+      <a class="btn btn-get" href="/downloads/Redpen.dmg" download data-alive>
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11.2 8.5c0-1.6 1.3-2.4 1.4-2.4-.8-1.1-2-1.3-2.4-1.3-1-.1-2 .6-2.5.6s-1.3-.6-2.2-.6C4.4 4.8 3.3 5.5 2.7 6.6c-1.2 2.1-.3 5.2.9 6.9.6.8 1.2 1.7 2.1 1.7.9 0 1.2-.5 2.2-.5s1.3.5 2.2.5c.9 0 1.5-.8 2-1.7.6-.9.9-1.8.9-1.9 0 0-1.8-.7-1.8-3.1zM9.6 3.6c.5-.6.8-1.4.7-2.2-.7 0-1.5.5-2 1.1-.4.5-.8 1.3-.7 2.1.8.1 1.5-.4 2-1z"/></svg>
+        <span>Get Redpen</span>
+      </a>
+      <a class="btn btn-secondary" href="#how">How it works</a>
+    </div>
+    <p class="req">Free for macOS 15 or later.</p>
+  </header>
+
+  <section class="showcase">
+    <canvas id="halo" aria-hidden="true"></canvas>
+    <div class="window">
+      <picture>
+        <source srcset="/assets/editor-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="/assets/editor-light.png" width="2452" height="1732" alt="The Redpen editor. A screenshot with two red circles, handwritten notes beside them, and a numbered note under the image. The other screenshots sit in a carousel at the bottom.">
+      </picture>
+    </div>
+  </section>
+
+  <main class="points" id="how">
+    <section class="point">
+      <div class="visual">
+        <div class="page" data-loop="6000" aria-hidden="true">
+          <i style="top: 40px; width: 180px"></i>
+          <i style="top: 74px; width: 320px"></i>
+          <i class="key" style="top: 118px; width: 150px"></i>
+          <i style="top: 162px; width: 260px"></i>
+          <i style="top: 206px; width: 300px"></i>
+          <svg viewBox="0 0 420 280">
+            <path class="rough" pathLength="1" d="M205 112c-20-18-78-22-130-12-38 8-58 24-50 38 9 17 60 24 114 20 44-3 84-12 86-28 1-13-30-24-72-26-30-1-58 3-76 10"/>
+            <path class="clean" pathLength="1" d="M198 106C180 92 128 88 84 94 46 100 24 112 26 126c2 16 50 26 104 25 52-1 88-12 88-28 0-14-34-24-78-26-30-1-56 3-72 8"/>
+          </svg>
+          <span class="said"></span>
+          <span class="mic"><b style="--i:0"></b><b style="--i:1"></b><b style="--i:2"></b><b style="--i:3"></b><b style="--i:4"></b></span>
+        </div>
+      </div>
+      <div class="copy">
+        <p class="label">Circle it</p>
+        <h2>Circle anything. Say why.</h2>
+        <p>Your scribble becomes a clean red circle, and Redpen starts listening. What you say is written right beside it. Click anywhere to leave a note there instead.</p>
+      </div>
+    </section>
+
+    <section class="point">
+      <div class="visual">
+        <div class="sheet"><img src="/assets/sample.png" width="1120" height="1136" alt="A screenshot marked up with Redpen. Short notes sit beside two circles, and a long note is numbered and written under the image."></div>
+      </div>
+      <div class="copy">
+        <p class="label">Talk it through</p>
+        <h2>Long notes go under the image.</h2>
+        <p>Talk as long as you like. Long notes move below the screenshot, numbered to match the mark, so a model reads them as plain text.</p>
+      </div>
+    </section>
+
+    <section class="point">
+      <div class="visual">
+        <div class="nudges-bg"></div>
+        <div class="nudges" aria-hidden="true"></div>
+      </div>
+      <div class="copy">
+        <p class="label">Screenshots</p>
+        <h2>Take a screenshot. Redpen asks.</h2>
+        <p>New screenshots put a red dot in the menu bar, and one notification asks after a burst. Or pick images from Photos.</p>
+      </div>
+    </section>
+
+    <section class="point">
+      <div class="visual">
+        <div class="listen" aria-hidden="true">
+          <span class="chip"><span class="bars"><b style="--i:0"></b><b style="--i:1"></b><b style="--i:2"></b><b style="--i:3"></b></span>Superwhisper is listening</span>
+          <span class="transcript"></span>
+        </div>
+      </div>
+      <div class="copy">
+        <p class="label">Voice</p>
+        <h2>Built for Superwhisper.</h2>
+        <p>Circle something and Redpen starts Superwhisper for you. The transcript lands beside your mark. No Superwhisper? Mac dictation works too, on your Mac.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" id="get">
+    <div class="footer-brand"><img src="/assets/icon.png" alt="">
+      <div><span>Redpen</span><small>Free and <a href="https://github.com/HMDRAMS-DEV/redpen" style="text-decoration: underline; text-underline-offset: 3px;">open source</a>. macOS 15 or later.</small></div>
+    </div>
+    <div class="buttons">
+      <a class="btn btn-get" href="/downloads/Redpen.dmg" download data-alive>
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11.2 8.5c0-1.6 1.3-2.4 1.4-2.4-.8-1.1-2-1.3-2.4-1.3-1-.1-2 .6-2.5.6s-1.3-.6-2.2-.6C4.4 4.8 3.3 5.5 2.7 6.6c-1.2 2.1-.3 5.2.9 6.9.6.8 1.2 1.7 2.1 1.7.9 0 1.2-.5 2.2-.5s1.3.5 2.2.5c.9 0 1.5-.8 2-1.7.6-.9.9-1.8.9-1.9 0 0-1.8-.7-1.8-3.1zM9.6 3.6c.5-.6.8-1.4.7-2.2-.7 0-1.5.5-2 1.1-.4.5-.8 1.3-.7 2.1.8.1 1.5-.4 2-1z"/></svg>
+        <span>Get Redpen</span>
+      </a>
+      <a class="btn btn-secondary" href="https://github.com/HMDRAMS-DEV/redpen"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>View on GitHub</span></a>
+    </div>
+  </footer>
+  <p class="legal">First launch: if macOS says it can't check Redpen, open System Settings, Privacy &amp; Security, and click Open Anyway. Superwhisper is a trademark of its owner. Redpen is not affiliated with or endorsed by Superwhisper.</p>
+
+<script>
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+const str = (c, a = 1) => `rgba(${c.map(Math.round).join(',')},${a})`;
+
+// The circle around "grades" draws itself once the page settles.
+requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector('.hero').classList.add('drawn')));
+
+// A ripple of dots behind the app. Gray and slow at rest; reaching for "Get Redpen" turns it red.
+(() => {
+  const canvas = document.getElementById('halo'), ctx = canvas.getContext('2d');
+  let w = 0, h = 0, life = 0, target = 0, t = 0, last = performance.now();
+  const resize = () => {
+    const dpr = devicePixelRatio || 1;
+    w = canvas.clientWidth; h = canvas.clientHeight;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  const frame = now => {
+    const dt = Math.min(50, now - last); last = now;
+    life += (target - life) * Math.min(1, dt / 250);
+    t += dt / 1000 * (reduced ? 0 : 0.6 + life * 1.6);
+    const ink = rgb(css('--ink')), pen = rgb(css('--pen'));
+    const pitch = 20, cx = w / 2, cy = h / 2, max = Math.max(w, h) / 1.6;
+    ctx.clearRect(0, 0, w, h);
+    for (let y = cy % pitch; y < h; y += pitch) {
+      for (let x = cx % pitch; x < w; x += pitch) {
+        const dx = x - cx, dy = (y - cy) * 1.4, d = Math.hypot(dx, dy);
+        const fade = 1 - d / max;
+        if (fade <= 0) continue;
+        const wave = .5 + .5 * Math.sin(d / 34 - t * 2.2);
+        const r = .9 + wave * 2.2 * fade;
+        ctx.fillStyle = str(mix(ink, pen, life), (.08 + wave * .2) * fade * (1 + life * 1.4));
+        ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      }
+    }
+    requestAnimationFrame(frame);
+  };
+  document.querySelectorAll('[data-alive]').forEach(el => {
+    el.addEventListener('mouseenter', () => { target = 1; document.body.classList.add('alive'); });
+    el.addEventListener('mouseleave', () => { target = 0; document.body.classList.remove('alive'); });
+  });
+  addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(frame);
+})();
+
+// Writes text letter by letter into an element, as spans the CSS animates.
+const write = (el, text) => {
+  el.innerHTML = '';
+  [...text].forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.textContent = ch;
+    s.style.setProperty('--i', i);
+    el.appendChild(s);
+  });
+};
+const said = ['too tight', 'wrong color', 'say why here'];
+let saidIndex = 0;
+
+// 3. New screenshots: notifications blur in from above and push the rest into a stack.
+const nudges = [
+  ['Mark up 3 screenshots?', 'Circle what’s wrong and say why.'],
+  ['Mark up your screenshot?', 'Circle what’s wrong and say why.'],
+  ['Mark up 2 screenshots?', 'Circle what’s wrong and say why.'],
+];
+let nudgeIndex = 0;
+const layout = box => [...box.children].forEach((n, i) => {
+  n.style.transform = `translateY(${i * 14}px) scale(${1 - i * .06})`;
+  n.style.opacity = i > 2 ? '0' : String(1 - i * .3);
+  n.style.filter = 'none';
+  n.style.zIndex = String(10 - i);
+  if (i > 0) n.querySelector('time').textContent = `${i * 5}m ago`;
+});
+const pushNudge = box => {
+  const [title, body] = nudges[nudgeIndex++ % nudges.length];
+  const note = document.createElement('div');
+  note.className = 'note';
+  note.innerHTML = `<img src="/assets/icon.png" alt=""><div><b>${title}</b><span>${body}</span></div><time>now</time>`;
+  Object.assign(note.style, { transform: 'translateY(-36px) scale(.94)', opacity: '0', filter: 'blur(8px)', zIndex: '11' });
+  box.prepend(note);
+  void note.offsetWidth;
+  layout(box);
+  if (box.children.length > 4) setTimeout(() => box.lastElementChild?.remove(), 800);
+};
+
+// 4. A transcript types out, clears, and comes back with the next thought.
+const lines = ['This label is unclear', 'Make the button bigger', 'Too much padding here'];
+let lineIndex = 0;
+
+// Each visual runs while it's on screen and restarts on a loop.
+const runners = {
+  page: el => {
+    const words = el.querySelector('.said');
+    el.classList.remove('play', 'listening', 'said-in'); words.innerHTML = ''; void el.offsetWidth;
+    el.classList.add('play');
+    return [
+      setTimeout(() => el.classList.add('listening'), 1800),
+      setTimeout(() => { el.classList.remove('listening'); write(words, said[saidIndex++ % said.length]); el.classList.add('said-in'); }, 3300),
+    ];
+  },
+  nudges: el => { pushNudge(el); return []; },
+  listen: el => {
+    const out = el.querySelector('.transcript'), line = lines[lineIndex++ % lines.length];
+    out.textContent = '';
+    return [...line].map((_, i) => setTimeout(() => { out.textContent = line.slice(0, i + 1); }, 400 + i * 60));
+  },
+};
+const periods = { page: 6000, nudges: 2600, listen: 3600 };
+const loops = new Map();
+const io = new IntersectionObserver(entries => entries.forEach(({ target, isIntersecting }) => {
+  if (target.classList.contains('point') || target.classList.contains('showcase')) { if (isIntersecting) target.classList.add('seen'); return; }
+  const kind = Object.keys(runners).find(k => target.classList.contains(k));
+  if (isIntersecting && !loops.has(target)) {
+    if (reduced) {
+      if (kind === 'page') { target.classList.add('play', 'said-in'); write(target.querySelector('.said'), said[0]); }
+      if (kind === 'nudges') { pushNudge(target); pushNudge(target); }
+      if (kind === 'listen') target.querySelector('.transcript').textContent = lines[0];
+      loops.set(target, 0);
+      return;
+    }
+    let timers = runners[kind](target);
+    loops.set(target, setInterval(() => { timers.forEach(clearTimeout); timers = runners[kind](target); }, periods[kind]));
+  } else if (!isIntersecting && loops.has(target) && !reduced) {
+    clearInterval(loops.get(target)); loops.delete(target);
+  }
+}), { threshold: .35 });
+document.querySelectorAll('.point, .showcase, .page, .nudges, .listen').forEach(el => io.observe(el));
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+name: Redpen
+options:
+  bundleIdPrefix: com.ramihmd.redpen
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+targets:
+  Redpen:
+    type: application
+    platform: macOS
+    sources: [Redpen]
+    info:
+      path: Redpen/Info.plist
+      properties:
+        CFBundleDisplayName: Redpen
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.productivity
+        NSHumanReadableCopyright: "MIT License"
+        NSMicrophoneUsageDescription: "Redpen listens while you talk, so your note appears beside what you circled."
+        NSSpeechRecognitionUsageDescription: "Redpen turns what you say into notes on your screenshots. Speech is recognized on this Mac."
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Image
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.image]
+        NSDesktopFolderUsageDescription: "Redpen opens the screenshots you take, which macOS saves to your Desktop."
+    entitlements:
+      path: Redpen/Redpen.entitlements
+      properties:
+        com.apple.security.device.audio-input: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ramihmd.redpen.Redpen
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_APP_SANDBOX: NO
+      configs:
+        Release:
+          ENABLE_HARDENED_RUNTIME: YES
+  RedpenTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [RedpenTests]
+    dependencies:
+      - target: Redpen
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+schemes:
+  Redpen:
+    build:
+      targets:
+        Redpen: all
+    test:
+      targets: [RedpenTests]

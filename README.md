@@ -1,56 +1,79 @@
 # Redpen
 
-Redpen is a desktop screenshot-review tool. Drop in app screenshots, draw directly on them, type or dictate feedback, then download each marked-up image or the whole set as a ZIP.
+A menu bar app for marking up screenshots the way a teacher marks a page. Circle anything and say why. Your words appear beside the circle in red pen. Then paste the set into a chat with a model.
 
-**[Try Redpen](https://redpen.ramihmd.com)**
+**[Download for Mac](https://github.com/HMDRAMS-DEV/redpen/releases/latest)** · [redpen.ramihmd.com](https://redpen.ramihmd.com)
 
-## What it does
+Requires macOS 15 or later. Redpen is ad-hoc signed and not notarized, so on first launch macOS may block it. Open System Settings, Privacy & Security, and click Open Anyway.
 
-- Imports PNG, JPEG, and WebP screenshots locally in the browser.
-- Draws freehand red annotations without changing the original files.
-- Transcribes microphone audio with Whisper on the visitor's device.
-- Renders each screenshot, annotation, and note into a portable PNG.
-- Downloads the complete review as a store-only ZIP archive.
+## How it works
 
-Use the info button in the app for keyboard shortcuts. Arrow keys move between screenshots even while the note field is focused.
+- **Circle anything.** A rough loop becomes a clean red-pen circle. Redpen starts listening straight away, and the transcript is written beside the circle, outside it.
+- **Click anywhere** to leave a note at that spot. Click a note to edit it.
+- **Talk for a while.** Notes over 90 characters move under the image, numbered to match a circled number on the image. The exported PNG gets taller to fit them, so a model reads them as plain text.
+- **Lines, ticks, and crosses** stay as you drew them, just smoothed. They don't open a note.
+- **One image at a time**, with the set in a carousel along the bottom. Use ← and → to move between images.
 
-## Privacy and architecture
+## Getting images in
 
-Redpen has no backend, accounts, analytics, or upload endpoint. Screenshots, annotations, notes, and microphone frames stay in the browser tab.
+- **Screenshots.** Redpen finds your screenshots through Spotlight's `kMDItemIsScreenCapture` tag, wherever they're saved. New ones put a red dot on the menu bar icon, and after a burst Redpen sends one notification asking if you want to mark them up. You can turn this off in Settings.
+- **Photos.** The system Photos picker, which needs no library permission.
+- **Files.** Open, drop on the window or the Dock icon, use Open With, or press ⌘V.
 
-Dictation runs in a Web Worker with [`@huggingface/transformers`](https://github.com/huggingface/transformers.js) and `onnx-community/whisper-base.en`. The browser downloads model/runtime assets from Hugging Face and jsDelivr, then caches them. Audio is not sent to an application server and there is no per-use model API charge.
+## Voice
 
-The app is intentionally desktop-only. Mobile screens receive a short notice instead of initializing the editor or speech model.
+| Engine | What happens |
+|---|---|
+| **Superwhisper** (default when installed) | Redpen opens `superwhisper://record` when you circle or click, and keeps focus on the note. Stop recording with your Superwhisper shortcut, or press ⌘⏎ (Redpen sends `superwhisper://stop`). Superwhisper pastes the transcript into the note, and Redpen finishes the note a moment later. |
+| **Mac dictation** | Apple's speech recognizer, on this Mac when supported. The note finishes when you pause. |
+| **Type only** | No listening. |
 
-## Run locally
+If Superwhisper isn't installed, the first screen, the popover, and Settings link to [superwhisper.com](https://superwhisper.com).
 
-Requires Node.js 24.
+## Export
 
-```sh
-npm ci
-npm run dev
-```
+- **Copy** (⌘C) puts the marked-up PNG on the clipboard as image data and as a file, so it pastes into ChatGPT, Claude, or Slack.
+- **Copy all** (⇧⌘C) copies every image as files.
+- **Save all** (⌘S) writes `redpen-01-name.png` and so on to a folder you choose.
 
-Then open the local URL printed by Vite.
+## Build
 
-## Verify
-
-```sh
-npm run lint
-npm test
-npm run build
-npm audit
-```
-
-The browser tests use Playwright. Install its Chromium runtime once if needed:
+Requirements: macOS 15 or later, Xcode 16 or later, and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```sh
-npx playwright install chromium
+xcodegen generate
+xcodebuild -project Redpen.xcodeproj -scheme Redpen -destination 'platform=macOS' test
+open Redpen.xcodeproj   # then Run
 ```
 
-## Stack
+To render the editor, the empty state, the popover, and a sample export to PNGs for design review:
 
-React 19, TypeScript, Vite, Transformers.js, Canvas, Web Audio, and Playwright. Production is a static Vercel deployment with an enforced content security policy.
+```sh
+TEST_RUNNER_REDPEN_SNAPSHOTS=1 xcodebuild -project Redpen.xcodeproj -scheme Redpen -destination 'platform=macOS' test -only-testing:RedpenTests/SnapshotRender
+```
+
+The images land in `$TMPDIR/RedpenSnapshots`.
+
+`scripts/make-dmg.sh` builds Release and writes `site/downloads/Redpen.dmg`. The app is ad-hoc signed and not notarized. The app icon is drawn by `scripts/render-icon.swift`.
+
+Redpen isn't sandboxed, because it reads screenshots wherever macOS saves them and opens Superwhisper's deep links.
+
+## Site
+
+`site/` is the landing page at redpen.ramihmd.com, a static Vercel deployment. Deploy from `site/` with `vercel deploy --prod`.
+
+The earlier browser version of Redpen lives in git history before this commit.
+
+## Code map
+
+Under `Redpen/`:
+
+
+- `Model/Ink.swift`: turns a raw stroke into a circle or a smoothed line.
+- `Model/Markup.swift`: note placement, the notes panel, drawing, and PNG export. The editor and the export share it.
+- `Store/ReviewStore.swift`: images, the pen, the active note, new screenshots, and copying.
+- `Voice/Voice.swift`: Superwhisper deep links and Apple speech.
+- `Capture/ScreenshotWatcher.swift`: the Spotlight query for screenshots.
 
 ## License
 
