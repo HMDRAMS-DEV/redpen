@@ -23,8 +23,8 @@ targets:
       path: Redpen/Info.plist
       properties:
         CFBundleDisplayName: Redpen
-        CFBundleShortVersionString: "0.1.1"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: "0.1.2"
+        CFBundleVersion: "3"
         SUFeedURL: https://redpen.ramihmd.com/appcast.xml
         SUPublicEDKey: qOxwZqP7ofp2K4TUTCMqAA5P8EF/sbNrcEubiWKNHTE=
         SUEnableAutomaticChecks: true
@@ -43,9 +43,6 @@ targets:
       path: Redpen/Redpen.entitlements
       properties:
         com.apple.security.device.audio-input: true
-        # Ad-hoc signing has no team, so hardened runtime would refuse to load Sparkle.
-        # Remove once the app is signed with a Developer ID.
-        com.apple.security.cs.disable-library-validation: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ramihmd.redpen.Redpen
@@ -56,6 +53,9 @@ targets:
       configs:
         Release:
           ENABLE_HARDENED_RUNTIME: YES
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          DEVELOPMENT_TEAM: 8Z6WRF99H5
+          OTHER_CODE_SIGN_FLAGS: --timestamp
   RedpenTests:
     type: bundle.unit-test
     platform: macOS

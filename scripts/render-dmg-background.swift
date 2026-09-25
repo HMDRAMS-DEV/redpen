@@ -31,7 +31,9 @@ func draw() {
     let dots = stride(from: 250.0, through: 380, by: 13)
     for (index, x) in dots.enumerated() {
         let t = CGFloat(index) / CGFloat(dots.underestimatedCount - 1)
-        color(0xE5271E, 0.35 + 0.65 * t).setFill()
+        // Opaque, from a light coral to the pen red. A transparent red goes muddy on the warm paper.
+        let light = color(0xF7B2AC), pen = color(0xE5271E)
+        (light.blended(withFraction: t, of: pen) ?? pen).setFill()
         NSBezierPath(ovalIn: NSRect(x: x - 3.5, y: y - 3.5, width: 7, height: 7)).fill()
     }
     let head = NSBezierPath()
@@ -58,11 +60,12 @@ func draw() {
 }
 
 func image(scale: CGFloat) -> NSBitmapImageRep {
+    // Tagged sRGB, so Finder shows the colors as written instead of treating them as device values.
     let rep = NSBitmapImageRep(
         bitmapDataPlanes: nil, pixelsWide: Int(size.width * scale), pixelsHigh: Int(size.height * scale),
         bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
         colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
-    )!
+    )!.retagging(with: .sRGB)!
     rep.size = size
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
