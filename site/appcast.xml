@@ -6,5 +6,14 @@
     <description>Redpen updates. scripts/release.sh adds each release below the marker.</description>
     <language>en</language>
     <!-- releases -->
+    <item>
+      <title>Redpen 0.1.1</title>
+      <pubDate>Fri, 25 Sep 2026 17:22:04 +0000</pubDate>
+      <sparkle:version>2</sparkle:version>
+      <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>Redpen now updates itself. You'll get new versions without downloading them again. The app icon is also centered.</p>]]></description>
+      <enclosure url="https://github.com/HMDRAMS-DEV/redpen/releases/download/v0.1.1/Redpen.dmg" type="application/octet-stream" sparkle:edSignature="C/TcwxqFI/M1qDsSNOQZJz9RWfn5orP8ToCYaeCY0H1V3nlN82MX1epxyn2PLhCHBhOBQeijfn0qaS/GQBRTCA==" length="2109524"/>
+    </item>
   </channel>
 </rss>
