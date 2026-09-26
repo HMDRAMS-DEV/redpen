@@ -7,6 +7,15 @@
     <language>en</language>
     <!-- releases -->
     <item>
+      <title>Redpen 0.1.4</title>
+      <pubDate>Sat, 26 Sep 2026 04:58:05 +0000</pubDate>
+      <sparkle:version>5</sparkle:version>
+      <sparkle:shortVersionString>0.1.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>The first screen has more breathing room, and the Focus tip in the setup card is cleaner.</p>]]></description>
+      <enclosure url="https://github.com/HMDRAMS-DEV/redpen/releases/download/v0.1.4/Redpen.dmg" type="application/octet-stream" sparkle:edSignature="KTpfIIVcoMasOqhLo1fHkfiVlxn38dlteF/f5TJIlxAFBKSpryIdGqStFdG20j9M9tgjcqX7nr8cx08+B4hTDw==" length="2281293"/>
+    </item>
+    <item>
       <title>Redpen 0.1.3</title>
       <pubDate>Sat, 26 Sep 2026 02:28:58 +0000</pubDate>
       <sparkle:version>4</sparkle:version>
