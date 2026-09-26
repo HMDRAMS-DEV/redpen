@@ -7,6 +7,15 @@
     <language>en</language>
     <!-- releases -->
     <item>
+      <title>Redpen 0.1.3</title>
+      <pubDate>Sat, 26 Sep 2026 02:28:58 +0000</pubDate>
+      <sparkle:version>4</sparkle:version>
+      <sparkle:shortVersionString>0.1.3</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>Redpen now notices screenshots from your iPhone and iPad through iCloud Photos, and the first screen helps you turn on notifications and let them through Focus. Notifications show a preview, and the menu bar loop circles how many screenshots are waiting.</p>]]></description>
+      <enclosure url="https://github.com/HMDRAMS-DEV/redpen/releases/download/v0.1.3/Redpen.dmg" type="application/octet-stream" sparkle:edSignature="nob6MsMWSldrnwNiTbCDdn1JRxRHujOyj9ZGc4loZuyfHYd3gzK2RMolbnAxuwEohTVWz9mFciFq4KuVe8EoAw==" length="2279721"/>
+    </item>
+    <item>
       <title>Redpen 0.1.2</title>
       <pubDate>Fri, 25 Sep 2026 20:35:08 +0000</pubDate>
       <sparkle:version>3</sparkle:version>
