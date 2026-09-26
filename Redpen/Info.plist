@@ -32,9 +32,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.2</string>
+	<string>0.1.3</string>
 	<key>CFBundleVersion</key>
-	<string>3</string>
+	<string>4</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
 	<key>LSUIElement</key>
@@ -45,6 +45,8 @@
 	<string>MIT License</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Redpen listens while you talk, so your note appears beside what you circled.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Redpen finds screenshots from your iPhone and iPad that reach this Mac through iCloud Photos.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Redpen turns what you say into notes on your screenshots. Speech is recognized on this Mac.</string>
 	<key>SUEnableAutomaticChecks</key>

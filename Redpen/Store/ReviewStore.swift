@@ -1,6 +1,8 @@
 import AppKit
 import ImageIO
 import Observation
+import OSLog
+import Photos
 import UniformTypeIdentifiers
 import UserNotifications
 
@@ -13,6 +15,11 @@ enum Keys {
 enum WindowID {
     static let editor = "editor"
     static let settings = "settings"
+}
+
+/// Where a permission stands, reduced to what the setup screens show.
+enum Access {
+    case unasked, allowed, denied
 }
 
 /// The review in progress: the screenshots, the pen, the note being written, and the new
@@ -39,8 +46,15 @@ final class ReviewStore {
     var photoPickerRequested = false
     var fileImporterRequested = false
     var toast: String?
+    /// Notifications carry the nudge after a burst of screenshots.
+    private(set) var notificationAccess = Access.unasked
+    /// Photos access finds screenshots from other devices through iCloud Photos.
+    private(set) var photosAccess = Access.unasked
 
     private let watcher = ScreenshotWatcher()
+    private let photosWatcher = PhotosWatcher()
+    private var macCaptures: [ScreenshotWatcher.Capture] = []
+    private var cloudCaptures: [ScreenshotWatcher.Capture] = []
     private var handled: Set<URL> = []
     private let launched = Date.now
     private var noticeTask: Task<Void, Never>?
@@ -63,8 +77,20 @@ final class ReviewStore {
         guard !started else { return }
         started = true
         UserDefaults.standard.register(defaults: [Keys.askOnScreenshot: true])
-        watcher.onChange = { [weak self] in self?.capturesChanged($0) }
+        watcher.onChange = { [weak self] in
+            self?.macCaptures = $0
+            self?.capturesChanged()
+        }
+        photosWatcher.onChange = { [weak self] in
+            self?.cloudCaptures = $0
+            self?.capturesChanged()
+        }
         watcher.start()
+        // Access can change in System Settings while Redpen runs.
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { await self?.refreshAccess() }
+        }
+        Task { await refreshAccess() }
     }
 
     func requestEditor() {
@@ -139,30 +165,130 @@ final class ReviewStore {
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["screenshots"])
     }
 
-    private func capturesChanged(_ found: [ScreenshotWatcher.Capture]) {
+    private func capturesChanged() {
+        let found = (macCaptures + cloudCaptures).sorted { $0.date > $1.date }
         captures = found
         let fresh = found.filter { $0.date >= launched && !handled.contains($0.url) }
         guard fresh != pending else { return }
         let grew = fresh.count > pending.count
         pending = fresh
+        Self.log.info("\(fresh.count) screenshots pending")
         guard grew, UserDefaults.standard.bool(forKey: Keys.askOnScreenshot) else { return }
         // Screenshots often come in bursts. Ask once, after the burst.
         noticeTask?.cancel()
         noticeTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled, let self, !self.pending.isEmpty else { return }
-            if !NSApp.isActive { await self.notifyPending() }
+            // Skip only when the editor is in front. A menu bar app stays "active" after its
+            // popover closes, so NSApp.isActive alone would swallow most notifications.
+            if NSApp.isActive, NSApp.keyWindow?.identifier?.rawValue.hasPrefix(WindowID.editor) == true {
+                Self.log.info("Skipped notification: the editor is in front")
+                return
+            }
+            await self.notifyPending()
         }
     }
 
+    private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "Redpen", category: "screenshots")
+
     private func notifyPending() async {
         let center = UNUserNotificationCenter.current()
-        guard (try? await center.requestAuthorization(options: [.alert])) == true else { return }
-        let content = UNMutableNotificationContent()
+        guard (try? await center.requestAuthorization(options: [.alert])) == true else {
+            Self.log.info("Skipped notification: not allowed")
+            return
+        }
         let count = pending.count
-        content.title = count == 1 ? "Mark up your screenshot?" : "Mark up \(count) screenshots?"
-        content.body = "Circle what's wrong and say why."
-        try? await center.add(UNNotificationRequest(identifier: "screenshots", content: content, trigger: nil))
+        let fromCloud = pending.first.map { PhotosWatcher.contains($0.url) } ?? false
+        let line = Self.notice(count: count, fromCloud: fromCloud, pick: Int.random(in: 0..<100))
+        let content = UNMutableNotificationContent()
+        content.title = line.title
+        content.body = line.body
+        // The system moves an attachment's file, so it gets a copy of the newest screenshot.
+        if let newest = pending.first {
+            let copy = URL.temporaryDirectory.appending(path: "\(UUID().uuidString).\(newest.url.pathExtension)")
+            if (try? FileManager.default.copyItem(at: newest.url, to: copy)) != nil {
+                content.attachments = [try? UNNotificationAttachment(identifier: "screenshot", url: copy)].compactMap { $0 }
+            }
+        }
+        do {
+            try await center.add(UNNotificationRequest(identifier: "screenshots", content: content, trigger: nil))
+            Self.log.info("Sent notification for \(count) screenshots")
+        } catch {
+            Self.log.error("Notification failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// A little variety, so the nudge doesn't read like a system alert. `pick` chooses the line.
+    static func notice(count: Int, fromCloud: Bool, pick: Int) -> (title: String, body: String) {
+        let lines: [(String, String)]
+        if count > 1 {
+            lines = [
+                ("\(count) screenshots, hot off the screen", "Circle what's off and say why."),
+                ("That's a lot of evidence", "\(count) screenshots are waiting for the red pen."),
+                ("On a roll", "Mark up all \(count) while they're fresh."),
+            ]
+        } else if fromCloud {
+            lines = [
+                ("Straight from your iPhone", "Mark it up on the big screen."),
+                ("Your iPhone sent a screenshot", "Circle it here and say why."),
+            ]
+        } else {
+            lines = [
+                ("Caught something?", "Circle it and say why."),
+                ("Red pen's ready", "Mark up the screenshot you just took."),
+                ("Something bugging you?", "Circle it. Say it. Paste it."),
+                ("Fresh screenshot", "Got notes? It's all yours."),
+            ]
+        }
+        let line = lines[pick % lines.count]
+        return (line.0, line.1)
+    }
+
+    // MARK: Access
+
+    func refreshAccess() async {
+        switch await UNUserNotificationCenter.current().notificationSettings().authorizationStatus {
+        case .notDetermined: notificationAccess = .unasked
+        case .denied: notificationAccess = .denied
+        default: notificationAccess = .allowed
+        }
+        switch PHPhotoLibrary.authorizationStatus(for: .readWrite) {
+        case .notDetermined: photosAccess = .unasked
+        case .authorized, .limited: photosAccess = .allowed
+        default: photosAccess = .denied
+        }
+        Self.log.info("Access: notifications \(String(describing: self.notificationAccess), privacy: .public), photos \(String(describing: self.photosAccess), privacy: .public)")
+        photosWatcher.start()
+    }
+
+    /// Asks the first time. After a refusal only System Settings can change it, so it opens there.
+    func allowNotifications() {
+        guard notificationAccess == .unasked else {
+            return open(settingsPane: "com.apple.Notifications-Settings.extension?id=\(Bundle.main.bundleIdentifier ?? "")")
+        }
+        Task {
+            _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])
+            await refreshAccess()
+        }
+    }
+
+    func allowPhotos() {
+        guard photosAccess == .unasked else {
+            return open(settingsPane: "com.apple.preference.security?Privacy_Photos")
+        }
+        Task {
+            _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            await refreshAccess()
+        }
+    }
+
+    /// Focus can't be asked for. The person adds Redpen to a Focus's allowed apps.
+    func openFocusSettings() {
+        open(settingsPane: "com.apple.Focus-Settings.extension")
+    }
+
+    private func open(settingsPane: String) {
+        if let url = URL(string: "x-apple.systempreferences:\(settingsPane)") { NSWorkspace.shared.open(url) }
     }
 
     // MARK: Navigation

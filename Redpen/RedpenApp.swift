@@ -40,7 +40,7 @@ struct MenuBarLabel: View {
     @AppStorage(Keys.welcomed) private var welcomed = false
 
     var body: some View {
-        Image(nsImage: MenuBarIcon.image(pending: !store.pending.isEmpty))
+        Image(nsImage: MenuBarIcon.image(pending: store.pending.count))
             .task {
                 store.start()
                 if !welcomed {

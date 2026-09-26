@@ -39,6 +39,7 @@ struct EmptyStateView: View {
                 RecentStrip()
             }
 
+            SetupCard()
             SuperwhisperCard()
         }
         .padding(32)
@@ -174,6 +175,83 @@ struct SuperwhisperCard: View {
             .padding(14)
             .frame(maxWidth: 628)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+    }
+}
+
+/// Asks for what the screenshot nudge needs, once. Refusals are handled in Settings.
+struct SetupCard: View {
+    @Environment(ReviewStore.self) private var store
+
+    var body: some View {
+        if store.notificationAccess == .unasked || store.photosAccess == .unasked {
+            VStack(alignment: .leading, spacing: 12) {
+                SetupRow(symbol: "bell.badge", title: "Ask after each screenshot",
+                         detail: "One notification after a burst of screenshots, so you can mark them up.",
+                         access: store.notificationAccess, allow: store.allowNotifications)
+                SetupRow(symbol: "iphone", title: "Include iPhone screenshots",
+                         detail: "Screenshots from your iPhone or iPad arrive through iCloud Photos, and Redpen asks about them too.",
+                         access: store.photosAccess, allow: store.allowPhotos)
+                HStack(spacing: 4) {
+                    Text("Using a Focus? Add Redpen to its allowed apps so the notification gets through.")
+                    Button("Focus Settings", action: store.openFocusSettings)
+                        .buttonStyle(.plain)
+                        .fontWeight(.medium)
+                        .foregroundStyle(Theme.pen)
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.muted)
+            }
+            .padding(14)
+            .frame(maxWidth: 628, alignment: .leading)
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+    }
+}
+
+private struct SetupRow: View {
+    let symbol: String
+    let title: String
+    let detail: String
+    let access: Access
+    let allow: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.pen)
+                .frame(width: 40, height: 40)
+                .background(Theme.penWash, in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            AccessButton(access: access, allow: allow)
+                .buttonStyle(PillButtonStyle(prominent: false, compact: true))
+        }
+    }
+}
+
+/// "Allow" before asking, "On" once allowed, and a way to System Settings after a refusal.
+struct AccessButton: View {
+    let access: Access
+    let allow: () -> Void
+
+    var body: some View {
+        switch access {
+        case .allowed:
+            Label("On", systemImage: "checkmark")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Theme.muted)
+        case .unasked:
+            Button("Allow", action: allow)
+        case .denied:
+            Button("Open Settings", action: allow)
         }
     }
 }

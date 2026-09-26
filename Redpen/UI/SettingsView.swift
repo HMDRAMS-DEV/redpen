@@ -31,7 +31,24 @@ struct SettingsView: View {
 
             Section {
                 Toggle("Ask to mark up new screenshots", isOn: $askOnScreenshot)
-                Text("When you take screenshots, Redpen puts a red dot in the menu bar and sends one notification after the burst.")
+                Text("When you take screenshots, the menu bar loop turns red and circles how many are waiting. Redpen sends one notification after the burst.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                LabeledContent("Notifications") {
+                    AccessButton(access: store.notificationAccess, allow: store.allowNotifications)
+                }
+                LabeledContent("iPhone and iPad screenshots") {
+                    AccessButton(access: store.photosAccess, allow: store.allowPhotos)
+                }
+                Text("Screenshots from your other devices arrive through iCloud Photos. Redpen needs Photos access to find them.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                LabeledContent("Focus") {
+                    Button("Open Focus Settings", action: store.openFocusSettings)
+                }
+                Text("A Focus hides notifications. To see Redpen's while one is on, add Redpen to that Focus's allowed apps.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -1,27 +1,36 @@
 import AppKit
 
 /// The menu bar glyph: a quick pen loop, like a circle around a mistake. A template image, so
-/// it follows the menu bar, until new screenshots arrive; then a red dot asks for a look.
+/// it follows the menu bar, until new screenshots arrive; then the loop turns red and circles
+/// how many are waiting, written in the pen's hand.
 enum MenuBarIcon {
-    static func image(pending: Bool) -> NSImage {
-        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { rect in
-            let loop = Ink.Loop(center: CGPoint(x: 8.6, y: 9.4), radii: CGSize(width: 6.3, height: 4.9),
+    static func image(pending: Int) -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+            let loop = Ink.Loop(center: CGPoint(x: 9, y: 9.2), radii: CGSize(width: 7.2, height: 6.4),
                                 rotation: -0.35, start: -2.3, clockwise: true)
             let path = NSBezierPath(cgPath: Ink.path(loop))
             path.lineWidth = 1.7
             path.lineCapStyle = .round
             path.lineJoinStyle = .round
-            (pending ? NSColor.labelColor : .black).setStroke()
-            path.stroke()
-            if pending {
-                let dot = NSBezierPath(ovalIn: NSRect(x: rect.maxX - 6.5, y: 0.5, width: 6, height: 6))
-                NSColor(hex: 0xE5271E).setFill()
-                dot.fill()
+            guard pending > 0 else {
+                NSColor.black.setStroke()
+                path.stroke()
+                return true
             }
+            let isDark = NSAppearance.currentDrawing().bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            let pen = NSColor(hex: isDark ? 0xFF5A4E : 0xE5271E)
+            pen.setStroke()
+            path.stroke()
+            let label = NSAttributedString(string: pending > 9 ? "9+" : "\(pending)", attributes: [
+                .font: Markup.handFont(pending > 9 ? 9 : 12),
+                .foregroundColor: pen,
+            ])
+            let size = label.size()
+            label.draw(at: CGPoint(x: 9 - size.width / 2, y: 9.2 - size.height / 2))
             return true
         }
-        image.isTemplate = !pending
-        image.accessibilityDescription = pending ? "Redpen, new screenshots" : "Redpen"
+        image.isTemplate = pending == 0
+        image.accessibilityDescription = pending > 0 ? "Redpen, \(pending) new screenshots" : "Redpen"
         return image
     }
 }

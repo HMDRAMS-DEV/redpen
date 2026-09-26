@@ -16,8 +16,9 @@ Requires macOS 15 or later. Signed with a Developer ID and notarized by Apple.
 
 ## Getting images in
 
-- **Screenshots.** Redpen finds your screenshots through Spotlight's `kMDItemIsScreenCapture` tag, wherever they're saved. New ones put a red dot on the menu bar icon, and after a burst Redpen sends one notification asking if you want to mark them up. You can turn this off in Settings.
-- **Photos.** The system Photos picker, which needs no library permission.
+- **Screenshots.** Redpen finds your screenshots through Spotlight's `kMDItemIsScreenCapture` tag, wherever they're saved. New ones turn the menu bar loop red, circling how many are waiting, and after a burst Redpen sends one notification asking if you want to mark them up. You can turn this off in Settings. The first screen and Settings ask for notification permission, and link to Focus settings, where you can add Redpen to a Focus's allowed apps so the notification gets through.
+- **iPhone and iPad screenshots.** If you allow Photos access, Redpen also finds screenshots that reach this Mac through iCloud Photos, copies them to its cache, and asks about them the same way.
+- **Photos.** The system Photos picker, which needs no library permission. Library access is only for finding iCloud screenshots.
 - **Files.** Open, drop on the window or the Dock icon, use Open With, or press ⌘V.
 
 ## Voice
@@ -86,6 +87,7 @@ Under `Redpen/`:
 - `Store/ReviewStore.swift`: images, the pen, the active note, new screenshots, and copying.
 - `Voice/Voice.swift`: Superwhisper deep links and Apple speech.
 - `Capture/ScreenshotWatcher.swift`: the Spotlight query for screenshots.
+- `Capture/PhotosWatcher.swift`: screenshots from other devices, through iCloud Photos.
 
 ## License
 

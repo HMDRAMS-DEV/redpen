@@ -156,33 +156,39 @@ struct UpdateTile: View {
     }
 }
 
-/// New screenshots, stacked like a pile of pages, with one button to start marking them up.
+/// New screenshots, stacked like a pile of pages. The whole tile starts marking them up.
 struct PendingTile: View {
     @Environment(ReviewStore.self) private var store
 
     var body: some View {
         let count = store.pending.count
         HStack(spacing: 12) {
-            ZStack {
-                ForEach(Array(store.pending.prefix(3).enumerated().reversed()), id: \.element.id) { offset, capture in
-                    CaptureThumb(url: capture.url, height: 40)
-                        .frame(width: 56)
-                        .rotationEffect(.degrees(Double(offset) * -5))
-                        .offset(x: CGFloat(offset) * -4, y: CGFloat(offset) * -2)
-                        .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+            Button { store.addPending() } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        ForEach(Array(store.pending.prefix(3).enumerated().reversed()), id: \.element.id) { offset, capture in
+                            CaptureThumb(url: capture.url, height: 40)
+                                .frame(width: 56)
+                                .rotationEffect(.degrees(Double(offset) * -5))
+                                .offset(x: CGFloat(offset) * -4, y: CGFloat(offset) * -2)
+                                .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+                        }
+                    }
+                    .frame(width: 64, height: 48)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(count == 1 ? "New screenshot" : "\(count) new screenshots")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("Mark it up while it's fresh")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.pen)
+                    }
+                    .lineLimit(1)
+                    Spacer(minLength: 0)
                 }
+                .contentShape(Rectangle())
             }
-            .frame(width: 64, height: 48)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(count == 1 ? "New screenshot" : "\(count) new screenshots")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("Circle it, then say why.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 4)
-            Button("Mark up") { store.addPending() }
-                .buttonStyle(PillButtonStyle(compact: true))
+            .buttonStyle(.plain)
+            .help(count == 1 ? "Mark up this screenshot" : "Mark up these screenshots")
             IconButton(symbol: "xmark", help: "Not now", size: 20) { store.dismissPending() }
         }
         .padding(10)
