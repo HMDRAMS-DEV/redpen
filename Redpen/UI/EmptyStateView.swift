@@ -5,22 +5,22 @@ struct EmptyStateView: View {
     @Environment(ReviewStore.self) private var store
 
     var body: some View {
-        VStack(spacing: 26) {
-            VStack(spacing: 10) {
+        VStack(spacing: 40) {
+            VStack(spacing: 14) {
                 Wordmark(size: 44)
                 Text("Circle it. Say it. Paste it into your chat.")
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Theme.muted)
             }
 
-            HStack(spacing: 14) {
+            HStack(spacing: 16) {
                 StepCard(number: 1, title: "Circle anything") { StepArt.circle }
                 StepCard(number: 2, title: "Talk") { StepArt.talk }
                 StepCard(number: 3, title: "It's written beside it") { StepArt.note }
             }
 
-            VStack(spacing: 10) {
-                HStack(spacing: 10) {
+            VStack(spacing: 16) {
+                HStack(spacing: 12) {
                     Button("Choose from Photos") { store.photoPickerRequested = true }
                         .buttonStyle(PillButtonStyle())
                     Button("Open Images…") { store.fileImporterRequested = true }
@@ -42,7 +42,7 @@ struct EmptyStateView: View {
             SetupCard()
             SuperwhisperCard()
         }
-        .padding(32)
+        .padding(40)
         .frame(maxWidth: 720)
     }
 }
@@ -53,9 +53,9 @@ private struct StepCard<Art: View>: View {
     @ViewBuilder let art: () -> Art
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             art()
-                .frame(height: 96)
+                .frame(height: 104)
                 .frame(maxWidth: .infinity)
                 .background(Theme.canvas, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             HStack(spacing: 8) {
@@ -67,7 +67,8 @@ private struct StepCard<Art: View>: View {
                 Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.ink)
             }
         }
-        .padding(12)
+        .padding(14)
+        .padding(.bottom, 2)
         .frame(width: 200)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
@@ -125,11 +126,11 @@ private struct RecentStrip: View {
     @Environment(ReviewStore.self) private var store
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("Recent screenshots")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.muted)
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 ForEach(Array(store.captures.prefix(5))) { capture in
                     Button { store.add(urls: [capture.url]) } label: {
                         CaptureThumb(url: capture.url, height: 64)
@@ -139,7 +140,7 @@ private struct RecentStrip: View {
                 }
             }
         }
-        .frame(maxWidth: 628)
+        .frame(maxWidth: 632)
     }
 }
 
@@ -173,7 +174,7 @@ struct SuperwhisperCard: View {
                 }
             }
             .padding(14)
-            .frame(maxWidth: 628)
+            .frame(maxWidth: 632)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
@@ -192,18 +193,20 @@ struct SetupCard: View {
                 SetupRow(symbol: "iphone", title: "Include iPhone screenshots",
                          detail: "Screenshots from your iPhone or iPad arrive through iCloud Photos, and Redpen asks about them too.",
                          access: store.photosAccess, allow: store.allowPhotos)
-                HStack(spacing: 4) {
-                    Text("Using a Focus? Add Redpen to its allowed apps so the notification gets through.")
-                    Button("Focus Settings", action: store.openFocusSettings)
-                        .buttonStyle(.plain)
-                        .fontWeight(.medium)
-                        .foregroundStyle(Theme.pen)
-                }
-                .font(.system(size: 12))
-                .foregroundStyle(Theme.muted)
+                Theme.hairline.frame(height: 1)
+                Text("Using a Focus? Add Redpen to its allowed apps so the notification gets through. **[Focus Settings](redpen:focus)**")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.muted)
+                    .tint(Theme.pen)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .environment(\.openURL, OpenURLAction { _ in
+                        store.openFocusSettings()
+                        return .handled
+                    })
             }
             .padding(14)
-            .frame(maxWidth: 628, alignment: .leading)
+            .frame(maxWidth: 632, alignment: .leading)
             .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
     }
