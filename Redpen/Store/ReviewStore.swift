@@ -310,6 +310,13 @@ final class ReviewStore {
         index = newIndex
     }
 
+    func selectAll() {
+        guard !shots.isEmpty else { return }
+        commitNote()
+        anchor = 0
+        index = shots.count - 1
+    }
+
     func step(_ delta: Int, extending: Bool = false) {
         select(min(max(index + delta, 0), shots.count - 1), extending: extending)
     }
@@ -473,21 +480,14 @@ final class ReviewStore {
     /// Copies the marked-up screenshot, ready to paste into a chat with a model.
     func copyCurrent() {
         commitNote()
-        guard let shot, let url = write([shot], offset: index).first else { return }
-        let item = NSPasteboardItem()
-        if let data = try? Data(contentsOf: url) { item.setData(data, forType: .png) }
-        item.setString(url.absoluteString, forType: .fileURL)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.writeObjects([item])
+        guard let shot, Self.copy(write([shot], offset: index)) else { return }
         show("Copied. Paste it into your chat.")
     }
 
     func copyAll() {
         commitNote()
         let urls = write(shots, offset: 0)
-        guard !urls.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.writeObjects(urls as [NSURL])
+        guard Self.copy(urls) else { return }
         show(urls.count == 1 ? "Copied 1 image." : "Copied \(urls.count) images.")
     }
 
@@ -518,6 +518,22 @@ final class ReviewStore {
             guard let data = Markup.png(shot), (try? data.write(to: url)) != nil else { return nil }
             return url
         }
+    }
+
+    /// One clipboard item per image, each with the PNG itself and its file. Chats and
+    /// terminals read the image data; apps that take files get every file.
+    /// Returns false when there was nothing to copy.
+    static func copy(_ urls: [URL], to board: NSPasteboard = .general) -> Bool {
+        let items = urls.compactMap { url -> NSPasteboardItem? in
+            guard let data = try? Data(contentsOf: url) else { return nil }
+            let item = NSPasteboardItem()
+            item.setData(data, forType: .png)
+            item.setString(url.absoluteString, forType: .fileURL)
+            return item
+        }
+        guard !items.isEmpty else { return false }
+        board.clearContents()
+        return board.writeObjects(items)
     }
 
     func show(_ message: String) {

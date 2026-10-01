@@ -117,6 +117,7 @@ struct EditorView: View {
             Button("Next") { store.step(1) }.keyboardShortcut(.rightArrow, modifiers: []).disabled(writing)
             Button("Select Previous") { store.step(-1, extending: true) }.keyboardShortcut(.leftArrow, modifiers: .shift).disabled(writing)
             Button("Select Next") { store.step(1, extending: true) }.keyboardShortcut(.rightArrow, modifiers: .shift).disabled(writing)
+            Button("Select All") { store.selectAll() }.keyboardShortcut("a").disabled(writing || empty)
             Button("Undo") { store.undo() }.keyboardShortcut("z").disabled(writing || empty)
             Button("Copy") { store.copyCurrent() }.keyboardShortcut("c").disabled(writing || empty)
             Button("Copy All") { store.copyAll() }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(empty)
@@ -371,6 +372,7 @@ private struct HelpCard: View {
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 5) {
                 row("← →", "Move between images")
                 row("⇧← →", "Select several")
+                row("⌘A", "Select all")
                 row("⌫", "Remove selected")
                 row("⏎", "Finish the note")
                 row("⌘⏎", "Talk into the note")

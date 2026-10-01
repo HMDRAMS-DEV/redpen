@@ -12,7 +12,7 @@ Requires macOS 15 or later. Signed with a Developer ID and notarized by Apple.
 - **Click anywhere** to leave a note at that spot. Click a note to edit it.
 - **Talk for a while.** Notes over 90 characters move under the image, numbered to match a circled number on the image. The exported PNG gets taller to fit them, so a model reads them as plain text.
 - **Lines, ticks, and crosses** stay as you drew them, just smoothed. They don't open a note.
-- **One image at a time**, with the set in a carousel along the bottom. Use ← and → to move between images. Hold Shift to select several, then press Delete to remove them. The trash button clears them all.
+- **One image at a time**, with the set in a carousel along the bottom. Use ← and → to move between images. Hold Shift to select several, or press ⌘A to select all, then press Delete to remove them. The trash button clears them all.
 
 ## Getting images in
 
@@ -34,7 +34,7 @@ If Superwhisper isn't installed, the first screen, the popover, and Settings lin
 ## Export
 
 - **Copy** (⌘C) puts the marked-up PNG on the clipboard as image data and as a file, so it pastes into ChatGPT, Claude, or Slack.
-- **Copy all** (⇧⌘C) copies every image as files.
+- **Copy all** (⇧⌘C) copies every image the same way. Apps that take files get all of them. Apps that read one pasted image, like a terminal, get the first.
 - **Save all** (⌘S) writes `redpen-01-name.png` and so on to a folder you choose.
 
 ## Build

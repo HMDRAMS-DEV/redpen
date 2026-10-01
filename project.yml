@@ -23,8 +23,8 @@ targets:
       path: Redpen/Info.plist
       properties:
         CFBundleDisplayName: Redpen
-        CFBundleShortVersionString: "0.1.5"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "0.1.6"
+        CFBundleVersion: "7"
         SUFeedURL: https://redpen.ramihmd.com/appcast.xml
         SUPublicEDKey: qOxwZqP7ofp2K4TUTCMqAA5P8EF/sbNrcEubiWKNHTE=
         SUEnableAutomaticChecks: true
