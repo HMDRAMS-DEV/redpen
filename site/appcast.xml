@@ -7,6 +7,15 @@
     <language>en</language>
     <!-- releases -->
     <item>
+      <title>Redpen 0.1.6</title>
+      <pubDate>Thu, 01 Oct 2026 21:35:42 +0000</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>0.1.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>Copy and Copy all now paste as images in chats and terminals. Press ⌘A to select every image, then Delete to remove them.</p>]]></description>
+      <enclosure url="https://github.com/HMDRAMS-DEV/redpen/releases/download/v0.1.6/Redpen.dmg" type="application/octet-stream" sparkle:edSignature="BrkMGYsU3XfXq9NNftD94d3ahEjlfDF+a+P9Jdi6qJnS204ghsfGa2eph8L1uhGBcSlafmyhd8r8eHa/e11mDA==" length="2292601"/>
+    </item>
+    <item>
       <title>Redpen 0.1.5</title>
       <pubDate>Thu, 01 Oct 2026 20:58:27 +0000</pubDate>
       <sparkle:version>6</sparkle:version>
