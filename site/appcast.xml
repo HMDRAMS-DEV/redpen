@@ -7,6 +7,15 @@
     <language>en</language>
     <!-- releases -->
     <item>
+      <title>Redpen 0.1.5</title>
+      <pubDate>Thu, 01 Oct 2026 20:58:27 +0000</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>0.1.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>Press Delete to remove an image, or hold Shift with the arrow keys to select several and delete them together. A new trash button clears every image.</p>]]></description>
+      <enclosure url="https://github.com/HMDRAMS-DEV/redpen/releases/download/v0.1.5/Redpen.dmg" type="application/octet-stream" sparkle:edSignature="Y7Swe/bWhuFr5iMyENrZDDChxOIl03UAvyxYz5Mj5pBqH8kBka3d2QxiR+q6okZBNT14eB+5PB7RwTbH/0jSBw==" length="2290696"/>
+    </item>
+    <item>
       <title>Redpen 0.1.4</title>
       <pubDate>Sat, 26 Sep 2026 04:58:05 +0000</pubDate>
       <sparkle:version>5</sparkle:version>
