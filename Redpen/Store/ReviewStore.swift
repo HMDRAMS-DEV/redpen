@@ -31,6 +31,8 @@ final class ReviewStore {
 
     var shots: [Shot] = []
     var index = 0
+    /// Where a shift-selection started. The selection runs from here to `index`.
+    private(set) var anchor: Int?
     /// The note shown as a live text field.
     private(set) var activeNoteID: Note.ID?
     /// The stroke under the pen, in image pixels.
@@ -66,6 +68,11 @@ final class ReviewStore {
     private var session: (isNew: Bool, original: String)?
 
     var shot: Shot? { shots.indices.contains(index) ? shots[index] : nil }
+    /// The images Delete removes: the current one, or the shift-selected run.
+    var selection: ClosedRange<Int> {
+        guard let anchor, shots.indices.contains(anchor) else { return index...index }
+        return min(anchor, index)...max(anchor, index)
+    }
     var activeNote: Note? { shot?.notes.first { $0.id == activeNoteID } }
 
     init(preview: [Shot] = [], voice: Voice = Voice()) {
@@ -139,6 +146,7 @@ final class ReviewStore {
         commitNote()
         shots.append(contentsOf: added)
         index = shots.count - added.count
+        anchor = nil
         requestEditor()
     }
 
@@ -293,27 +301,42 @@ final class ReviewStore {
 
     // MARK: Navigation
 
-    func select(_ newIndex: Int) {
-        guard shots.indices.contains(newIndex), newIndex != index else { return }
+    /// Moves to an image. Extending keeps the shift-selection's anchor where it started.
+    func select(_ newIndex: Int, extending: Bool = false) {
+        guard shots.indices.contains(newIndex) else { return }
+        anchor = extending ? anchor ?? index : nil
+        guard newIndex != index else { return }
         commitNote()
         index = newIndex
     }
 
-    func step(_ delta: Int) {
-        select(min(max(index + delta, 0), shots.count - 1))
+    func step(_ delta: Int, extending: Bool = false) {
+        select(min(max(index + delta, 0), shots.count - 1), extending: extending)
     }
 
     func remove(_ id: Shot.ID) {
         guard let position = shots.firstIndex(where: { $0.id == id }) else { return }
         if position == index { commitNote() }
         shots.remove(at: position)
+        anchor = nil
         if position < index || index >= shots.count { index = max(0, index - 1) }
+    }
+
+    /// Removes the current image, or every shift-selected one.
+    func removeSelection() {
+        guard shot != nil else { return }
+        let range = selection
+        commitNote()
+        shots.removeSubrange(range)
+        anchor = nil
+        index = max(0, min(range.lowerBound, shots.count - 1))
     }
 
     func clear() {
         commitNote()
         shots = []
         index = 0
+        anchor = nil
     }
 
     // MARK: The pen

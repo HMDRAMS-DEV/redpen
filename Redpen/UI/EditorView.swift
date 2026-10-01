@@ -115,6 +115,8 @@ struct EditorView: View {
         return ZStack {
             Button("Previous") { store.step(-1) }.keyboardShortcut(.leftArrow, modifiers: []).disabled(writing)
             Button("Next") { store.step(1) }.keyboardShortcut(.rightArrow, modifiers: []).disabled(writing)
+            Button("Select Previous") { store.step(-1, extending: true) }.keyboardShortcut(.leftArrow, modifiers: .shift).disabled(writing)
+            Button("Select Next") { store.step(1, extending: true) }.keyboardShortcut(.rightArrow, modifiers: .shift).disabled(writing)
             Button("Undo") { store.undo() }.keyboardShortcut("z").disabled(writing || empty)
             Button("Copy") { store.copyCurrent() }.keyboardShortcut("c").disabled(writing || empty)
             Button("Copy All") { store.copyAll() }.keyboardShortcut("c", modifiers: [.command, .shift]).disabled(empty)
@@ -124,7 +126,9 @@ struct EditorView: View {
             }.keyboardShortcut("v").disabled(writing)
             Button("Open") { store.fileImporterRequested = true }.keyboardShortcut("o")
             Button("Talk") { store.toggleListening() }.keyboardShortcut(.return, modifiers: .command).disabled(!writing)
-            Button("Remove") { if let shot = store.shot { store.remove(shot.id) } }
+            Button("Remove") { store.removeSelection() }
+                .keyboardShortcut(.delete, modifiers: []).disabled(writing || empty)
+            Button("Remove") { store.removeSelection() }
                 .keyboardShortcut(.delete, modifiers: .command).disabled(writing || empty)
         }
         .frame(width: 0, height: 0)
@@ -152,11 +156,12 @@ struct EditorView: View {
 private struct EditorBar: View {
     @Environment(ReviewStore.self) private var store
     @State private var showHelp = false
+    @State private var confirmClear = false
 
     var body: some View {
         HStack(spacing: 10) {
             Wordmark(size: 22)
-            Text("\(store.index + 1) of \(store.shots.count)")
+            Text(store.selection.count > 1 ? "\(store.selection.count) selected" : "\(store.index + 1) of \(store.shots.count)")
                 .font(.system(size: 13, weight: .medium).monospacedDigit())
                 .foregroundStyle(Theme.muted)
                 .padding(.leading, 6)
@@ -192,6 +197,12 @@ private struct EditorBar: View {
             Button(store.shots.count > 1 ? "Copy all · \(store.shots.count)" : "Copy all") { store.copyAll() }
                 .buttonStyle(PillButtonStyle())
                 .help("Copy every image, ready to paste into a chat (⇧⌘C)")
+            IconButton(symbol: "trash", help: "Clear all images", size: 30) { confirmClear = true }
+                .confirmationDialog("Clear all images?", isPresented: $confirmClear) {
+                    Button("Clear All", role: .destructive) { store.clear() }
+                } message: {
+                    Text("This removes every image and its markup.")
+                }
         }
         .frame(height: 40)
     }
@@ -262,7 +273,9 @@ private struct Filmstrip: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     ForEach(Array(store.shots.enumerated()), id: \.element.id) { position, shot in
-                        FilmThumb(shot: shot, selected: position == store.index) { store.select(position) }
+                        FilmThumb(shot: shot, selected: store.selection.contains(position)) {
+                            store.select(position, extending: NSEvent.modifierFlags.contains(.shift))
+                        }
                             .id(shot.id)
                     }
                     Button { store.fileImporterRequested = true } label: {
@@ -357,6 +370,8 @@ private struct HelpCard: View {
             Divider()
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 5) {
                 row("← →", "Move between images")
+                row("⇧← →", "Select several")
+                row("⌫", "Remove selected")
                 row("⏎", "Finish the note")
                 row("⌘⏎", "Talk into the note")
                 row("⌘Z", "Undo")
