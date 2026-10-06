@@ -7,6 +7,15 @@
     <language>en</language>
     <!-- releases -->
     <item>
+      <title>Redpen 0.1.7</title>
+      <pubDate>Tue, 06 Oct 2026 03:16:06 +0000</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>0.1.7</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>Voice is built in: Parakeet turns speech into text on your Mac, no Superwhisper needed. Fixes a crash when talking with Mac dictation. The first screen now asks for the microphone up front.</p>]]></description>
+      <enclosure url="https://github.com/HMDRAMS-DEV/redpen/releases/download/v0.1.7/Redpen.dmg" type="application/octet-stream" sparkle:edSignature="1mpKVpf5rAQW++v7dUaMrMCI4VQeVyk8H0WOkVObMYa8k+LvqnEDLzU4UZ2fiSMARB2UQl1MVVocEitpZ+aCBQ==" length="23038586"/>
+    </item>
+    <item>
       <title>Redpen 0.1.6</title>
       <pubDate>Thu, 01 Oct 2026 21:35:42 +0000</pubDate>
       <sparkle:version>7</sparkle:version>
