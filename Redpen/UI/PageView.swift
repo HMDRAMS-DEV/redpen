@@ -72,7 +72,7 @@ private struct PenSurface: View {
     }
 }
 
-/// The note being written, as red handwriting you can type into. Superwhisper pastes here too.
+/// The note being written, as red handwriting you can type into.
 private struct NoteField: View {
     @Environment(ReviewStore.self) private var store
     let note: Note
@@ -95,7 +95,7 @@ private struct NoteField: View {
                 .foregroundStyle(Color(nsColor: Markup.pen))
                 .focused($focused)
                 .frame(width: frame.width * scale + 2, alignment: .leading)
-                .onSubmit { store.commitNote() }
+                .onSubmit { store.submitNote() }
                 .onExitCommand { store.commitNote() }
             if Markup.isLong(note) {
                 Text("Long note. It goes under the image.")
@@ -126,7 +126,7 @@ private struct NoteField: View {
     }
 
     private var placeholder: String {
-        guard store.voice.isListening else { return "Type a note" }
-        return store.voice.engine == .superwhisper ? "Superwhisper is listening…" : "Listening…"
+        if store.voice.isTranscribing { return "Writing…" }
+        return store.voice.isListening ? "Listening…" : "Type a note"
     }
 }

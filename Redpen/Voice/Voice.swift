@@ -4,8 +4,8 @@ import Observation
 import Speech
 
 enum VoiceEngine: String, CaseIterable, Identifiable {
-    /// Superwhisper records and pastes the transcript into the focused note.
-    case superwhisper
+    /// A Parakeet model, on this Mac. The note is written when you pause.
+    case parakeet
     /// Apple's speech recognizer, on this Mac.
     case dictation
     /// No voice. Circling or clicking opens a note to type in.
@@ -15,7 +15,7 @@ enum VoiceEngine: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .superwhisper: "Superwhisper"
+        case .parakeet: "Parakeet"
         case .dictation: "Mac dictation"
         case .typing: "Type only"
         }
@@ -24,24 +24,25 @@ enum VoiceEngine: String, CaseIterable, Identifiable {
 
 /// Starts and stops listening for the note being written.
 ///
-/// With Superwhisper, Redpen only presses record and stop through Superwhisper's deep links.
-/// Superwhisper pastes its transcript at the cursor, which is the focused note, so the text
-/// arrives through the note's text field like typing does.
+/// Mac dictation writes as you talk. Parakeet records until you pause, then writes the whole
+/// note at once.
 @MainActor
 @Observable
 final class Voice {
-    static let superwhisperID = "com.superduper.superwhisper"
-    static let superwhisperSite = URL(string: "https://superwhisper.com")!
-
     private(set) var isListening = false
+    /// Parakeet heard you stop and is writing the note down, or loading its model first.
+    private(set) var isTranscribing = false
     private(set) var error: String?
 
     var engine: VoiceEngine {
         didSet { UserDefaults.standard.set(engine.rawValue, forKey: Keys.voiceEngine) }
     }
 
-    var superwhisperInstalled: Bool {
-        NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.superwhisperID) != nil
+    var model: ParakeetModel {
+        didSet {
+            UserDefaults.standard.set(model.rawValue, forKey: Keys.parakeetModel)
+            if parakeet?.model != model { parakeet = nil }
+        }
     }
 
     private let recognizer = SFSpeechRecognizer()
@@ -50,67 +51,138 @@ final class Voice {
     private var task: SFSpeechRecognitionTask?
     private var silence: Task<Void, Never>?
 
+    /// Loaded on first use and kept, so later notes don't wait for the model.
+    private var parakeet: ParakeetEngine?
+    private var recording: SpeechRecording?
+    private var writing: Task<Void, Never>?
+    private var onText: ((String) -> Void)?
+    private var onFinish: (() -> Void)?
+
     /// Pass `engine` to skip the saved setting, as tests do.
     init(engine fixed: VoiceEngine? = nil) {
+        model = UserDefaults.standard.string(forKey: Keys.parakeetModel).flatMap(ParakeetModel.init) ?? .default
         if let fixed {
             engine = fixed
             return
         }
-        let installed = NSWorkspace.shared.urlForApplication(withBundleIdentifier: Self.superwhisperID) != nil
-        let saved = UserDefaults.standard.string(forKey: Keys.voiceEngine).flatMap(VoiceEngine.init)
-        engine = saved ?? (installed ? .superwhisper : .dictation)
-        if engine == .superwhisper && !installed { engine = .dictation }
+        // An engine saved by an older version that no longer exists becomes Parakeet.
+        engine = UserDefaults.standard.string(forKey: Keys.voiceEngine).flatMap(VoiceEngine.init) ?? .parakeet
     }
 
-    /// Starts listening. `onText` gets the full transcript so far (Mac dictation only), and
-    /// `onFinish` runs when dictation ends on its own after a pause.
+    /// Starts listening. `onText` gets the full transcript so far, and `onFinish` runs when
+    /// dictation ends on its own after a pause, or after Parakeet writes the note.
     func start(onText: @escaping (String) -> Void, onFinish: @escaping () -> Void) {
-        stop()
+        cancel()
         error = nil
         switch engine {
         case .typing:
             return
-        case .superwhisper:
-            guard superwhisperInstalled else {
-                error = "Superwhisper isn't installed."
-                return
-            }
-            superwhisper("record")
-            isListening = true
+        case .parakeet:
+            Task { await startParakeet(onText: onText, onFinish: onFinish) }
         case .dictation:
             Task { await startDictation(onText: onText, onFinish: onFinish) }
         }
     }
 
+    /// Stops listening. Parakeet then writes down what it heard and finishes the note.
     func stop() {
         guard isListening else { return }
-        isListening = false
-        switch engine {
-        case .superwhisper:
-            superwhisper("stop")
-        case .dictation, .typing:
-            silence?.cancel()
-            audio?.inputNode.removeTap(onBus: 0)
-            audio?.stop()
-            request?.endAudio()
-            task?.finish()
-            audio = nil
-            request = nil
-            task = nil
+        if engine == .parakeet {
+            transcribe()
+        } else {
+            cancel()
         }
     }
 
-    /// Superwhisper pasted its transcript, so it has already stopped.
-    func superwhisperFinished() {
+    /// Stops listening and drops anything not yet written down.
+    func cancel() {
         isListening = false
+        isTranscribing = false
+        writing?.cancel()
+        writing = nil
+        _ = recording?.stop()
+        recording = nil
+        onText = nil
+        onFinish = nil
+        silence?.cancel()
+        audio?.inputNode.removeTap(onBus: 0)
+        audio?.stop()
+        request?.endAudio()
+        task?.finish()
+        audio = nil
+        request = nil
+        task = nil
     }
 
-    /// Opens a Superwhisper deep link without bringing Superwhisper forward, so the note keeps focus.
-    private func superwhisper(_ command: String) {
-        guard let url = URL(string: "superwhisper://\(command)") else { return }
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = false
-        NSWorkspace.shared.open(url, configuration: configuration)
+    /// Loads Parakeet in the background, downloading it the first time, so the first note
+    /// doesn't wait on it.
+    func preload() {
+        guard engine == .parakeet else { return }
+        let engine = parakeet ?? ParakeetEngine(model: model)
+        parakeet = engine
+        Task { try? await engine.prepare() }
+    }
+
+    /// Asks for the microphone, and for speech recognition when Mac dictation needs it.
+    func requestAccess() async -> Bool {
+        engine == .dictation ? await Self.authorize() : await AVCaptureDevice.requestAccess(for: .audio)
+    }
+
+    private func startParakeet(onText: @escaping (String) -> Void, onFinish: @escaping () -> Void) async {
+        guard await AVCaptureDevice.requestAccess(for: .audio) else {
+            error = "Allow microphone access for Redpen in System Settings, Privacy & Security."
+            return
+        }
+        // Load while you talk. The first time, this downloads the model.
+        preload()
+
+        let recording = SpeechRecording()
+        do {
+            try recording.start(onEnd: { [weak self, weak recording] end in
+                guard let self, self.recording === recording else { return }
+                switch end {
+                case .paused: self.transcribe()
+                case .silent:
+                    self.cancel()
+                    onFinish()
+                }
+            }, onFailure: { [weak self, weak recording] message in
+                guard let self, self.recording === recording else { return }
+                self.cancel()
+                self.error = message
+            })
+        } catch {
+            self.error = error.localizedDescription
+            return
+        }
+        self.recording = recording
+        self.onText = onText
+        self.onFinish = onFinish
+        isListening = true
+    }
+
+    private func transcribe() {
+        guard let recording, let parakeet, let onText, let onFinish else { return }
+        let samples = recording.stop()
+        self.recording = nil
+        isListening = false
+        isTranscribing = true
+        let model = parakeet.model
+        writing = Task { [weak self] in
+            do {
+                let text = try await parakeet.transcribe(samples).trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !Task.isCancelled, let self else { return }
+                self.isTranscribing = false
+                self.writing = nil
+                if !text.isEmpty { onText(text) }
+                onFinish()
+            } catch {
+                guard !Task.isCancelled, let self else { return }
+                self.isTranscribing = false
+                self.writing = nil
+                self.error = "\(model.name) couldn't write this down: \(error.localizedDescription)"
+            }
+        }
     }
 
     private func startDictation(onText: @escaping (String) -> Void, onFinish: @escaping () -> Void) async {
@@ -134,9 +206,7 @@ final class Voice {
             error = "No microphone found."
             return
         }
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [request] buffer, _ in
-            request.append(buffer)
-        }
+        Self.feed(input, format: format, to: request)
         do {
             audio.prepare()
             try audio.start()
@@ -161,7 +231,7 @@ final class Voice {
                     self.armSilence(onFinish: onFinish, after: .seconds(1.8))
                 }
                 if final || error != nil {
-                    self.stop()
+                    self.cancel()
                     onFinish()
                 }
             }
@@ -173,12 +243,21 @@ final class Voice {
         silence = Task { [weak self] in
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled, let self, self.isListening else { return }
-            self.stop()
+            self.cancel()
             onFinish()
         }
     }
 
-    private static func authorize() async -> Bool {
+    /// Nonisolated, so the tap closure doesn't inherit the main actor and trap when Core Audio
+    /// calls it on the audio thread.
+    private nonisolated static func feed(_ input: AVAudioInputNode, format: AVAudioFormat, to request: SFSpeechAudioBufferRecognitionRequest) {
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            request.append(buffer)
+        }
+    }
+
+    /// Nonisolated for the same reason: TCC answers on a background queue.
+    private nonisolated static func authorize() async -> Bool {
         let speech = await withCheckedContinuation { continuation in
             SFSpeechRecognizer.requestAuthorization { continuation.resume(returning: $0 == .authorized) }
         }

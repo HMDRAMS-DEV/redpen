@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import ImageIO
 import Observation
 import OSLog
@@ -8,6 +9,7 @@ import UserNotifications
 
 enum Keys {
     static let voiceEngine = "voiceEngine"
+    static let parakeetModel = "parakeetModel"
     static let askOnScreenshot = "askOnScreenshot"
     static let welcomed = "welcomed"
 }
@@ -52,6 +54,8 @@ final class ReviewStore {
     private(set) var notificationAccess = Access.unasked
     /// Photos access finds screenshots from other devices through iCloud Photos.
     private(set) var photosAccess = Access.unasked
+    /// The microphone, for talking your notes.
+    private(set) var micAccess = Access.unasked
 
     private let watcher = ScreenshotWatcher()
     private let photosWatcher = PhotosWatcher()
@@ -61,7 +65,6 @@ final class ReviewStore {
     private let launched = Date.now
     private var noticeTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
-    private var commitTask: Task<Void, Never>?
     private var started = false
     /// Whether the active note is new, and its text when it opened, so a note that ends
     /// empty or unchanged leaves no undo step behind.
@@ -265,6 +268,12 @@ final class ReviewStore {
         case .authorized, .limited: photosAccess = .allowed
         default: photosAccess = .denied
         }
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .notDetermined: micAccess = .unasked
+        case .authorized: micAccess = .allowed
+        default: micAccess = .denied
+        }
+        if micAccess == .allowed { voice.preload() }
         Self.log.info("Access: notifications \(String(describing: self.notificationAccess), privacy: .public), photos \(String(describing: self.photosAccess), privacy: .public)")
         photosWatcher.start()
     }
@@ -286,6 +295,16 @@ final class ReviewStore {
         }
         Task {
             _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+            await refreshAccess()
+        }
+    }
+
+    func allowMicrophone() {
+        guard micAccess == .unasked else {
+            return open(settingsPane: "com.apple.preference.security?Privacy_Microphone")
+        }
+        Task {
+            _ = await voice.requestAccess()
             await refreshAccess()
         }
     }
@@ -414,29 +433,26 @@ final class ReviewStore {
     func toggleListening() {
         if voice.isListening {
             voice.stop()
-        } else if activeNoteID != nil {
+        } else if activeNoteID != nil && !voice.isTranscribing {
             listen()
         }
     }
 
-    /// Text from the note's field: typing, or Superwhisper pasting its transcript.
+    /// Text from the note's field, typed.
     func typed(_ text: String) {
         guard let id = activeNoteID, let before = activeNote?.text, text != before else { return }
         setText(text, for: id)
-        guard voice.isListening else { return }
-        if voice.engine == .superwhisper, text.count - before.count > 3 {
-            // A transcript landed in one piece. Superwhisper is done; move on shortly unless
-            // you keep typing.
-            voice.superwhisperFinished()
-            commitTask?.cancel()
-            commitTask = Task { [weak self] in
-                try? await Task.sleep(for: .seconds(1.6))
-                guard !Task.isCancelled, let self, self.activeNoteID == id, self.activeNote?.text == text else { return }
-                self.commitNote()
-            }
-        } else if voice.engine == .dictation {
-            // You took over with the keyboard.
+        // You took over with the keyboard.
+        if voice.isListening || voice.isTranscribing { voice.cancel() }
+    }
+
+    /// Return in the note. While Parakeet listens, it stops listening, writes what you said,
+    /// then finishes the note.
+    func submitNote() {
+        if voice.engine == .parakeet && (voice.isListening || voice.isTranscribing) {
             voice.stop()
+        } else {
+            commitNote()
         }
     }
 
@@ -448,8 +464,7 @@ final class ReviewStore {
 
     /// Finishes the note being written. An empty note disappears; its circle stays.
     func commitNote() {
-        commitTask?.cancel()
-        voice.stop()
+        voice.cancel()
         guard let id = activeNoteID, let note = activeNote else { return }
         activeNoteID = nil
         let session = session

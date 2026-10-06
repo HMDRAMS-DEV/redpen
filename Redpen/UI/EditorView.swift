@@ -258,11 +258,9 @@ private struct StatusLine: View {
     }
 
     private var writingHint: String {
+        if store.voice.isTranscribing { return "Writing down what you said…" }
         guard store.voice.isListening else { return "Return to finish · ⌘⏎ to talk" }
-        switch store.voice.engine {
-        case .superwhisper: return "Talk, then stop Superwhisper as usual. Your words land in the note."
-        default: return "Talk. It finishes when you pause, or press Return."
-        }
+        return "Talk. It finishes when you pause, or press Return."
     }
 }
 

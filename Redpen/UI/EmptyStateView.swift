@@ -40,7 +40,6 @@ struct EmptyStateView: View {
             }
 
             SetupCard()
-            SuperwhisperCard()
         }
         .padding(40)
         .frame(maxWidth: 720)
@@ -144,49 +143,19 @@ private struct RecentStrip: View {
     }
 }
 
-/// Recommends Superwhisper, which Redpen drives for you, and offers it when installed.
-struct SuperwhisperCard: View {
-    @Environment(ReviewStore.self) private var store
-
-    var body: some View {
-        let voice = store.voice
-        if voice.engine != .superwhisper {
-            HStack(spacing: 14) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.pen)
-                    .frame(width: 40, height: 40)
-                    .background(Theme.penWash, in: Circle())
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Talk with Superwhisper").font(.system(size: 13, weight: .semibold))
-                    Text("When you circle something, Redpen starts Superwhisper for you, and your words land beside the circle.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 8)
-                if voice.superwhisperInstalled {
-                    Button("Use Superwhisper") { voice.engine = .superwhisper }
-                        .buttonStyle(PillButtonStyle(prominent: false, compact: true))
-                } else {
-                    Link("Get Superwhisper", destination: Voice.superwhisperSite)
-                        .buttonStyle(PillButtonStyle(prominent: false, compact: true))
-                }
-            }
-            .padding(14)
-            .frame(maxWidth: 632)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-    }
-}
-
-/// Asks for what the screenshot nudge needs, once. Refusals are handled in Settings.
+/// Asks for what talking and the screenshot nudge need, once. Refusals are handled in Settings.
 struct SetupCard: View {
     @Environment(ReviewStore.self) private var store
 
     var body: some View {
-        if store.notificationAccess == .unasked || store.photosAccess == .unasked {
+        let voice = store.voice.engine != .typing
+        if store.notificationAccess == .unasked || store.photosAccess == .unasked || (voice && store.micAccess == .unasked) {
             VStack(alignment: .leading, spacing: 12) {
+                if voice {
+                    SetupRow(symbol: "mic", title: "Talk your notes",
+                             detail: "Circle something and say why. Your words are turned into text on this Mac.",
+                             access: store.micAccess, allow: store.allowMicrophone)
+                }
                 SetupRow(symbol: "bell.badge", title: "Ask after each screenshot",
                          detail: "One notification after a burst of screenshots, so you can mark them up.",
                          access: store.notificationAccess, allow: store.allowNotifications)

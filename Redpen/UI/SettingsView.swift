@@ -11,9 +11,7 @@ struct SettingsView: View {
             Section {
                 Picker("Voice", selection: $voice.engine) {
                     ForEach(VoiceEngine.allCases) { engine in
-                        Text(engine.title)
-                            .tag(engine)
-                            .disabled(engine == .superwhisper && !voice.superwhisperInstalled)
+                        Text(engine.title).tag(engine)
                     }
                 }
                 .pickerStyle(.radioGroup)
@@ -21,9 +19,21 @@ struct SettingsView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                if !voice.superwhisperInstalled {
-                    Link("Get Superwhisper", destination: Voice.superwhisperSite)
-                        .font(.system(size: 12, weight: .medium))
+                if voice.engine != .typing {
+                    LabeledContent("Microphone") {
+                        AccessButton(access: store.micAccess, allow: store.allowMicrophone)
+                    }
+                }
+                if voice.engine == .parakeet {
+                    Picker("Model", selection: $voice.model) {
+                        ForEach(ParakeetModel.allCases) { model in
+                            Text(model.name).tag(model)
+                        }
+                    }
+                    Text(modelDetail(voice.model))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             } header: {
                 Text("After you circle something")
@@ -70,12 +80,17 @@ struct SettingsView: View {
 
     private func detail(_ engine: VoiceEngine) -> String {
         switch engine {
-        case .superwhisper:
-            "Redpen starts Superwhisper when you circle or click. Stop it with your Superwhisper shortcut, and the transcript lands in the note."
+        case .parakeet:
+            "A speech model on this Mac. Talk, and the note is written when you pause. Nothing leaves your Mac."
         case .dictation:
             "Apple's speech recognition, on this Mac. It stops when you pause."
         case .typing:
             "No listening. Circle or click, then type."
         }
+    }
+
+    private func modelDetail(_ model: ParakeetModel) -> String {
+        let download = model.isDownloaded ? "Downloaded." : "Downloads the first time you talk."
+        return "\(model.detail) \(download)"
     }
 }

@@ -106,23 +106,10 @@ struct PopoverView: View {
         }
     }
 
-    @ViewBuilder private var voiceStatus: some View {
-        if store.voice.engine == .superwhisper {
-            Label("Voice: Superwhisper", systemImage: "waveform")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-        } else if !store.voice.superwhisperInstalled {
-            Link(destination: Voice.superwhisperSite) {
-                Label("Try Superwhisper", systemImage: "waveform")
-                    .font(.system(size: 11, weight: .medium))
-            }
-            .foregroundStyle(.secondary)
-            .help("Redpen works best with Superwhisper for dictation.")
-        } else {
-            Label("Voice: \(store.voice.engine.title)", systemImage: "waveform")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-        }
+    private var voiceStatus: some View {
+        Label("Voice: \(store.voice.engine.title)", systemImage: "waveform")
+            .font(.system(size: 11))
+            .foregroundStyle(.tertiary)
     }
 
     private func open(_ id: String) {

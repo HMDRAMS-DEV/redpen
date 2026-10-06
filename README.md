@@ -25,11 +25,11 @@ Requires macOS 15 or later. Signed with a Developer ID and notarized by Apple.
 
 | Engine | What happens |
 |---|---|
-| **Superwhisper** (default when installed) | Redpen opens `superwhisper://record` when you circle or click, and keeps focus on the note. Stop recording with your Superwhisper shortcut, or press ⌘⏎ (Redpen sends `superwhisper://stop`). Superwhisper pastes the transcript into the note, and Redpen finishes the note a moment later. |
+| **Parakeet** (default) | Built in, the same engine as Parrot. Parakeet Ultra by default, run on the Neural Engine through [FluidAudio](https://github.com/FluidInference/FluidAudio). Redpen records until you pause, then writes the whole note. Press Return to stop early. Models download once to `~/Library/Application Support/FluidAudio/Models`; pick one in Settings. |
 | **Mac dictation** | Apple's speech recognizer, on this Mac when supported. The note finishes when you pause. |
 | **Type only** | No listening. |
 
-If Superwhisper isn't installed, the first screen, the popover, and Settings link to [superwhisper.com](https://superwhisper.com).
+The first screen asks for the microphone alongside notifications and Photos, so nothing prompts mid-note. Once the microphone is allowed, Redpen loads the model in the background.
 
 ## Export
 
@@ -57,7 +57,7 @@ The images land in `$TMPDIR/RedpenSnapshots`.
 
 `scripts/make-dmg.sh` builds Release and writes `site/downloads/Redpen.dmg`. It signs with the HMDFV Inc. Developer ID; `scripts/release.sh` notarizes it. The app icon is drawn by `scripts/render-icon.swift`.
 
-Redpen isn't sandboxed, because it reads screenshots wherever macOS saves them and opens Superwhisper's deep links.
+Redpen isn't sandboxed, because it reads screenshots wherever macOS saves them.
 
 ## Updates and releases
 
@@ -85,7 +85,8 @@ Under `Redpen/`:
 - `Model/Ink.swift`: turns a raw stroke into a circle or a smoothed line.
 - `Model/Markup.swift`: note placement, the notes panel, drawing, and PNG export. The editor and the export share it.
 - `Store/ReviewStore.swift`: images, the pen, the active note, new screenshots, and copying.
-- `Voice/Voice.swift`: Superwhisper deep links and Apple speech.
+- `Voice/Voice.swift`: picks the engine, starts and stops listening, and Apple speech.
+- `Voice/Parakeet.swift`: Parakeet models, the microphone at 16 kHz, and the pause detector.
 - `Capture/ScreenshotWatcher.swift`: the Spotlight query for screenshots.
 - `Capture/PhotosWatcher.swift`: screenshots from other devices, through iCloud Photos.
 
