@@ -1,6 +1,6 @@
 # Redpen
 
-A menu bar app for marking up screenshots the way a teacher marks a page. Circle anything and say why. Your words appear beside the circle in red pen. Then paste the set into a chat with a model.
+Voice screenshot markup for macOS: a menu bar app for marking up screenshots the way a teacher marks a page. Circle anything and say why. Your words appear beside the circle in red pen. Then paste the set into a chat with a model.
 
 **[Download for Mac](https://github.com/HMDRAMS-DEV/redpen/releases/latest)** · [redpen.ramihmd.com](https://redpen.ramihmd.com)
 
